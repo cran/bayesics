@@ -1,7 +1,7 @@
 Package: bayesics
 Title: Bayesian Analyses for One- and Two-Sample Inference and
         Regression Methods
-Version: 2.1.0
+Version: 2.1.1
 Authors@R: 
     c(person("Daniel K.", "Sewell", , "daniel-sewell@uiowa.edu", 
               role = c("aut", "cre","cph"),
@@ -23,9 +23,9 @@ Config/testthat/edition: 3
 URL: https://github.com/dksewell/bayesics
 BugReports: https://github.com/dksewell/bayesics/issues
 NeedsCompilation: no
-Packaged: 2026-02-20 22:54:48 UTC; dksewell
+Packaged: 2026-03-11 13:59:47 UTC; dksewell
 Author: Daniel K. Sewell [aut, cre, cph] (ORCID:
     <https://orcid.org/0000-0002-9238-4026>),
   Alan Arakkal [aut] (ORCID: <https://orcid.org/0000-0002-7001-493X>)
 Repository: CRAN
-Date/Publication: 2026-02-20 23:20:02 UTC
+Date/Publication: 2026-03-11 14:30:03 UTC

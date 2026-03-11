@@ -1,6 +1,6 @@
-fab93c89571b1d06960bbb209d095e7b *DESCRIPTION
-4806d482de1c0bca3a8786a5b7cb2b3a *NAMESPACE
-878be62a29caf635e039932f84fa9dcb *NEWS.md
+26e4aa8439e9c3ee701ea0e0fb015773 *DESCRIPTION
+1b7f89ac4c15026509c96ef161ac7981 *NAMESPACE
+fd2854611069c90db46f54e20efaecb9 *NEWS.md
 3ad58ab65d2fb03e40cc17192a5a14f4 *R/IC.R
 2b71b58038cb79736e1cad37a1e03ca1 *R/Surv.R
 6acc553354b292c7c4ab7e4525615221 *R/aov_b.R
@@ -13,12 +13,12 @@ dc4aa2674e2d65b15d82c4a3f78f33db *R/bayes_factors.R
 d680cc5acaff7f51b7ef982bddcc4980 *R/credint.R
 18fcbbaea55ef69e49c5b9f3c682b934 *R/find_beta_parms.R
 2893727d36a5b0ae4dbb6587fdb62210 *R/find_invgamma_parms.R
-79cc631f69fd616d1c43bd341f770764 *R/frac_bayes_factors.R
+59119c05ecd14100a151935e309b64b4 *R/frac_bayes_factors.R
 4074f595afcb4f8c64210d13302aa9b7 *R/get_posterior_draws.R
 8e4d113617e59367eca819aa1a04d09f *R/glm_b.R
 4e034c180f4639f2a86aee303d9d0912 *R/heteroscedasticity_test.R
 2cc912e19f08f01f542d31b445fa37a5 *R/imports.R
-c1a9b8cb3bb525c93b0f7e2f74eeb0e5 *R/lm_b.R
+c4f7cf3d9751393ac62b0ce55ba36196 *R/lm_b.R
 63476a509262582a1b5e793fd2a9a6ff *R/mediate_b.R
 ae0d01856a860b6deb550aa969eb9967 *R/negbinom.R
 ab876cc72f0ecbc159fb5286935cfa72 *R/np_glm_b.R
@@ -53,7 +53,7 @@ f1506237b986a80616412666edc0b897 *man/credint.Rd
 d780ba194dcd3500716aa5d08b7a2fc4 *man/get_posterior_draws.Rd
 d926cde916dd4019314b497945af7be5 *man/glm_b.Rd
 77e9b29a02278c08378414889a4f2f13 *man/heteroscedasticity_test.Rd
-87ae59876bcd148213831e790e63d002 *man/lm_b.Rd
+ed74d1b8665def74bd3085557347fc10 *man/lm_b.Rd
 7142ec16100cdf8bceb171d78e7164aa *man/mediate_b.Rd
 29c7357d62a6a820e4f7dc43b5c56f7b *man/negbinom.Rd
 ffb63a7933c3cc2de1bba027e17b5d8d *man/np_glm_b.Rd
@@ -83,7 +83,7 @@ bf213ec24bfefbb2057b27d151cd6acb *tests/testthat/test-bma_inference.R
 853c9d4b2638bc41133c04f34c51b684 *tests/testthat/test-get_posterior_draws.R
 fec9d1d39affaf6bca83ae9f6eae7ac8 *tests/testthat/test-glm_b.R
 c49f5fbc7b8982bfa026c6a7b714744f *tests/testthat/test-heteroscedasticity_test.R
-3f40d6c5df701cad3fb7fbf2d46fae5b *tests/testthat/test-lm_b.R
+83fdeba828b5d2f7031df6d61c15cc51 *tests/testthat/test-lm_b.R
 927ec8874841fda5bfcb1876fcd96fc7 *tests/testthat/test-mediate_b.R
 29466d7201bd04e10aec8eb50ca8a2ae *tests/testthat/test-np_glm_b.R
 c43a241d591a91c4d02f33784dbd605e *tests/testthat/test-poisson_test_b.R
