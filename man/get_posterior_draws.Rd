@@ -2,22 +2,30 @@
 % Please edit documentation in R/get_posterior_draws.R
 \name{get_posterior_draws}
 \alias{get_posterior_draws}
-\title{Get posterior samples from lm_b object}
+\alias{get_posterior_draws.lm_b}
+\alias{get_posterior_draws.aov_b}
+\title{Get Posterior Samples from \code{lm_b} Object}
 \usage{
-get_posterior_draws(object, n_draws = 10000, seed = 1)
+get_posterior_draws(object, n_draws, seed, ...)
+
+\method{get_posterior_draws}{lm_b}(object, n_draws = 10000, seed = 1, ...)
+
+\method{get_posterior_draws}{aov_b}(object, n_draws = 10000, seed = 1, ...)
 }
 \arguments{
 \item{object}{Object of class lm_b}
 
 \item{n_draws}{integer.  Number of posterior draws to obtain.}
 
-\item{seed}{integer.  Always set your seed!!!}
+\item{seed}{integer.}
+
+\item{...}{optional arguments.}
 }
 \value{
 matrix of posterior draws
 }
 \description{
-Get posterior samples from lm_b object
+Get Posterior Samples from \code{lm_b} Object
 }
 \examples{
 \donttest{

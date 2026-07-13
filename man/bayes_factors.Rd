@@ -5,7 +5,7 @@
 \alias{bayes_factors.lm_b}
 \alias{bayes_factors.glm_b}
 \alias{bayes_factors.survfit_b}
-\title{Bayes factors for lm_b, glm_b, and survfit_b}
+\title{Bayes Factors for \code{lm_b}, \code{glm_b}, and \code{survfit_b} Objects}
 \usage{
 bayes_factors(object, ...)
 
@@ -39,7 +39,8 @@ vs. the null hypothesis that the regression coefficient equals zero.
 Currently implemented for \code{lm_b} or \code{glm_b} objects.  Note
 that for \code{glm_b} objects, if importance sampling was used,
 the model will be refit using fixed form variational Bayes to get
-the multivariate posterior density.
+the multivariate posterior density.  The Bayes factor is
+then computed using the Savage-Dickey ratio.
 
 Interpretation is taken from Kass and Raftery.
 }
@@ -73,6 +74,8 @@ bayes_factors(fit,
 
 }
 \references{
+Chib, S. (1995). Marginal Likelihood from the Gibbs Output. Journal of the American Statistical Association, 90(432), 1313–1321. https://doi.org/10.1080/01621459.1995.10476635
+
 James M. Dickey. "The Weighted Likelihood Ratio, Linear Hypotheses on Normal Location Parameters." Ann. Math. Statist. 42 (1) 204 - 223, February, 1971. https://doi.org/10.1214/aoms/1177693507
 
 Kass, R. E., & Raftery, A. E. (1995). Bayes Factors. Journal of the American Statistical Association, 90(430), 773–795.

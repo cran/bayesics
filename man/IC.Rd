@@ -7,47 +7,30 @@
 \alias{BIC}
 \alias{WAIC}
 \alias{BIC.lm_b}
-\alias{BIC.glm_b}
-\alias{BIC.aov_b}
 \alias{AIC.lm_b}
-\alias{AIC.glm_b}
-\alias{AIC.aov_b}
 \alias{DIC.lm_b}
-\alias{DIC.glm_b}
 \alias{DIC.aov_b}
 \alias{WAIC.lm_b}
 \alias{WAIC.aov_b}
-\alias{WAIC.glm_b}
-\title{Compute AIC, BIC, DIC, or WAIC for aov_b or lm_b objects.  (Lower is better.)}
+\title{Compute AIC, BIC, DIC, or WAIC for \code{aov_b} or \code{lm_b} Objects.
+(Lower is Better.)}
 \usage{
 DIC(object, ...)
 
 \method{BIC}{lm_b}(object, ...)
 
-\method{BIC}{glm_b}(object, ...)
-
-\method{BIC}{aov_b}(object, ...)
-
 \method{AIC}{lm_b}(object, ...)
 
-\method{AIC}{glm_b}(object, ...)
-
-\method{AIC}{aov_b}(object, ...)
-
-\method{DIC}{lm_b}(object, seed = 1, mc_error = 0.01, ...)
-
-\method{DIC}{glm_b}(object, seed = 1, ...)
+\method{DIC}{lm_b}(object, seed = 1, mc_error = 0.5, ...)
 
 \method{DIC}{aov_b}(object, ...)
 
-\method{WAIC}{lm_b}(object, seed = 1, ...)
+\method{WAIC}{lm_b}(object, seed = 1, mc_error = 0.5, ...)
 
 \method{WAIC}{aov_b}(object, ...)
-
-\method{WAIC}{glm_b}(object, seed = 1, ...)
 }
 \arguments{
-\item{object}{aov_b, lm_b, or glm_b object}
+\item{object}{\code{aov_b}, \code{lm_b}, or \code{glm_b} object}
 
 \item{...}{Passed to methods.}
 
@@ -55,13 +38,23 @@ DIC(object, ...)
 
 \item{mc_error}{The number of posterior draws will ensure that
 with 99\% probability the posterior mean of the deviance for DIC will be
-within \eqn{\pm}\code{mc_error}E(deviance).}
+within \eqn{\pm}\code{mc_error}.  For WAIC, this is based on
+extrapolating the standard error from the preliminary
+posterior samples and may be inaccurate (at least 2000 samples
+will be used in final calculation).}
 }
 \value{
 Numeric (or in the case of DIC, a numeric vector)
 }
 \description{
-Compute AIC, BIC, DIC, or WAIC for aov_b or lm_b objects.  (Lower is better.)
+Compute AIC, BIC, DIC, or WAIC for \code{aov_b} or \code{lm_b} Objects.
+(Lower is Better.)
+}
+\details{
+AIC and BIC are constructed using the posterior mean. DIC
+and WAIC are computed via independent posterior sampling,
+ensuring that the final computed numbers is within
+\code{mc_error} of the actual DIC/WAIC with high probability.
 }
 \examples{
 \donttest{

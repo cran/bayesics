@@ -4,37 +4,31 @@
 \alias{print}
 \alias{print.aov_b}
 \alias{print.lm_b}
-\alias{print.np_glm_b}
-\alias{print.lm_b_bma}
-\alias{print.glm_b}
 \alias{print.mediate_b}
 \alias{print.survfit_b}
-\title{Print bayesics objects.}
+\alias{print.b_procedure}
+\title{Print \code{bayesics} Objects.}
 \usage{
 \method{print}{aov_b}(x, ...)
 
 \method{print}{lm_b}(x, ...)
 
-\method{print}{np_glm_b}(x, ...)
-
-\method{print}{lm_b_bma}(x, ...)
-
-\method{print}{glm_b}(x, ...)
-
 \method{print}{mediate_b}(x, ...)
 
 \method{print}{survfit_b}(x, ...)
+
+\method{print}{b_procedure}(x, ...)
 }
 \arguments{
 \item{x}{an object used to select a method.}
 
-\item{...}{optional arguments.}
+\item{...}{optional arguments passed to \code{tibble::print.tbl_df}}
 }
 \value{
 None
 }
 \description{
-Print bayesics objects.
+Print \code{bayesics} Objects.
 }
 \examples{
 \donttest{

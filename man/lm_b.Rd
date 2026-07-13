@@ -8,7 +8,7 @@ lm_b(
   formula,
   data,
   weights,
-  prior = c("zellner", "conjugate", "improper")[1],
+  prior = c("zellner", "conjugate", "improper"),
   zellner_g,
   prior_beta_mean,
   prior_beta_precision,
@@ -24,7 +24,7 @@ lm_b(
 \item{data}{A data frame in which the variables specified in the formula
 will be found. If missing, the variables are searched for in the standard way.
 However, it is strongly recommended that you use this argument so that other
-generics for bayesics objects work correctly.}
+generics for \code{bayesics} objects work correctly.}
 
 \item{weights}{an optional vector of weights to be used in the fitting process.
 Should be NULL or a numeric vector. If non-NULL, it is assumed that the
@@ -59,19 +59,10 @@ If missing, defaults go to those suggested by Kruchke (2018).}
 \item{CI_level}{numeric. Credible interval level.}
 }
 \value{
-lm_b() returns an object of class "lm_b", which behaves as a list with
-the following elements:
-\itemize{
-\item summary - tibble giving results for regression coefficients
-\item posterior_parameters - list giving the posterior parameters
-\item hyperparameters - list giving the user input (or default) hyperparameters used
-\item fitted - posterior mean of the individuals' means
-\item residuals - posterior mean of the residuals
-\item formula, data - input by user
-}
+Object of class \code{\link[=lm_b-class]{lm_b}}.
 }
 \description{
-lm_b is used to fit linear models.  It can be used to carry out
+\code{lm_b} is used to fit linear models.  It can be used to carry out
 regression, single stratum analysis of variance and analysis of
 covariance (although aov_b may provide a more convenient
 interface for ANOVA.)

@@ -2,7 +2,7 @@
 % Please edit documentation in R/aov_b.R
 \name{aov_b}
 \alias{aov_b}
-\title{Analysis of Variance using Bayesian methods}
+\title{Analysis of Variance Using Bayesian Methods}
 \usage{
 aov_b(
   formula,
@@ -67,41 +67,10 @@ than 1GB of memory, compute_bayes_factor will automatically be set to
 FALSE.  This setting can be overridden by setting \code{compute_bayes_factor="force"}.}
 }
 \value{
-Object of class "aov_b" with the following elements:
-\itemize{
-\item summary - tibble giving the summary of the model parameters
-\item BF_for_different_vs_same_means - Bayes factor in favor of the full
-model (each group has their own mean) vs. the null model (all groups have
-the same mean).
-\item pairwise summary - tibble giving the summary comparing all
-factor level means
-\item contrasts (if provided) - list with named elements L (the contrasts provided
-by the user) and summary.
-\item posterior_draws - mcmc object (see coda package) giving the posterior draws
-\item posterior_parameters -
-\itemize{
-\item mu_g - the post. means of the group means
-\item nu_g - the post. scalars of the precision
-\item a_g - (twice) the post. shape of the inv. gamma for the group variances
-\item b_g - (twice) the post. rate of the inv. gamma for the group variances.
-}
-\item hyperparameters -
-\itemize{
-\item mu - the prior mean of the group means
-\item nu - the prior scalar of the precision
-\item a - (twice) the prior shape of the inv. gamma for the group variances
-\item b - (twice) the prior rate of the inv. gamma for the group variances.
-}
-\item \code{fitted} - Posterior mean of \eqn{\mu_g := \mathbb{E}(y_{gi})}
-\item \code{residuals} - Posterior mean of the residuals
-\item \code{standardized_residuals} - Estimated residuals divided by the
-group standard deviation
-\item \code{mc_error} - absolute errors used to determine number of
-posterior draws for accurate interval estimation
-}
+Object of class \code{aov_b} and \code{\link[=lm_b-class]{lm_b}}.
 }
 \description{
-Analysis of Variance using Bayesian methods
+Analysis of Variance Using Bayesian Methods
 }
 \details{
 \strong{MODEL:}

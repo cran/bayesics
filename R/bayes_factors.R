@@ -1,7 +1,7 @@
 #' @name bayes_factors
 #'
 #' 
-#' @title Bayes factors for lm_b, glm_b, and survfit_b
+#' @title Bayes Factors for \code{lm_b}, \code{glm_b}, and \code{survfit_b} Objects
 #' 
 #' @description
 #' Bayes factors for Bayesian regression objects using the Savage-Dickey ratio
@@ -14,7 +14,8 @@
 #' Currently implemented for \code{lm_b} or \code{glm_b} objects.  Note 
 #' that for \code{glm_b} objects, if importance sampling was used, 
 #' the model will be refit using fixed form variational Bayes to get 
-#' the multivariate posterior density.
+#' the multivariate posterior density.  The Bayes factor is 
+#' then computed using the Savage-Dickey ratio.
 #' 
 #' Interpretation is taken from Kass and Raftery.
 #' 
@@ -29,6 +30,8 @@
 #' @returns A tibble with Bayes factors and interpretations.
 #' 
 #' @references 
+#' 
+#' Chib, S. (1995). Marginal Likelihood from the Gibbs Output. Journal of the American Statistical Association, 90(432), 1313–1321. https://doi.org/10.1080/01621459.1995.10476635
 #' 
 #' James M. Dickey. "The Weighted Likelihood Ratio, Linear Hypotheses on Normal Location Parameters." Ann. Math. Statist. 42 (1) 204 - 223, February, 1971. https://doi.org/10.1214/aoms/1177693507
 #' 
@@ -76,9 +79,16 @@ bayes_factors = function(object,...){
 bayes_factors.lm_b = function(object,
                               by = "coefficient",
                               ...){
+  
+  # object
+  if (!inherits(object, "lm_b"))
+    stop("`object` must be an object of class \"lm_b\"", call. = FALSE)
+  
+  # improper prior check
   if(is.na(object$hyperparameters[1])) 
     stop("Cannot compute Bayes factors with an improper prior.")
   
+  # by
   by = match.arg(tolower(by),
                  c("coefficient",
                    "variable"))
@@ -193,8 +203,8 @@ bayes_factors.lm_b = function(object,
                                          "Strong",
                                          "Decisive"))) |> 
                     paste(ifelse(.data$`BF favoring alternative` > 1,
-                                 " (in favor of keeping in the model)",
-                                 " (in favor of exluding from the model")))
+                                 "(in favor of keeping in the model)",
+                                 "(in favor of exluding from the model)")))
   results$bf_max = NULL
   
   return(results)
@@ -208,9 +218,17 @@ bayes_factors.lm_b = function(object,
 bayes_factors.glm_b = function(object,
                                by = "coefficient",
                                ...){
+  
+  
+  # object
+  if (!inherits(object, "glm_b"))
+    stop("`object` must be an object of class \"glm_b\"", call. = FALSE)
+  
+  # improper prior check
   if(is.na(object$hyperparameters[1])) 
     stop("Cannot compute Bayes factors with an improper prior.")
   
+  # by
   by = match.arg(tolower(by),
                  c("coefficient",
                    "variable"))
@@ -350,8 +368,8 @@ bayes_factors.glm_b = function(object,
                                          "Strong",
                                          "Decisive"))) |> 
                     paste(ifelse(.data$`BF favoring alternative` > 1,
-                                 " (in favor of keeping in the model)",
-                                 " (in favor of exluding from the model")))
+                                 "(in favor of keeping in the model)",
+                                 "(in favor of exluding from the model)")))
   results$bf_max = NULL
   
   return(results)
@@ -365,6 +383,24 @@ bayes_factors.glm_b = function(object,
 bayes_factors.survfit_b = function(object,
                                    object2,
                                    ...){
+  
+  
+  # object
+  if (!inherits(object, "survfit_b"))
+    stop("`object` must be an object of class \"survfit_b\"", call. = FALSE)
+  
+  # object2
+  if (missing(object2))
+    stop("`object2` must be supplied for \"survfit_b\" objects", call. = FALSE)
+  
+  if (!inherits(object2, "survfit_b"))
+    stop("`object2` must be an object of class \"survfit_b\"", call. = FALSE)
+  
+  # prevent accidental self-comparison
+  if (identical(object, object2))
+    stop("`object` and `object2` must be different survfit_b objects",
+         call. = FALSE)
+  
   
   # Make quick checks
   if(object$single_group_analysis)
@@ -394,8 +430,8 @@ bayes_factors.survfit_b = function(object,
   
   favor_or_against = 
     ifelse(BF > 1,
-           " (in favor of the ",
-           " (against the ")
+           "(in favor of the ",
+           "(against the ")
   
   Interpretation = 
     ifelse(bf_max <= 3.2,
@@ -413,16 +449,19 @@ bayes_factors.survfit_b = function(object,
                                  paste0(favor_or_against,"the second model)"),
                           ))))
   
-  message("\n----------\n\nSemi-parametric survival curve fitting using Bayesian techniques")
-  message("\n----------\n")
-  message(paste0("The Bayes factor equaled ",
-             format(signif(BF, 3)),
-             ".\nInterpretation: ",
-             Interpretation))
-  message("\n----------\n\n")
+  # message("\n----------\n\nSemi-parametric survival curve fitting using Bayesian techniques")
+  # message("\n----------\n")
+  # message(paste0("The Bayes factor equaled ",
+  #            format(signif(BF, 3)),
+  #            ".\nInterpretation: ",
+  #            Interpretation))
+  # message("\n----------\n\n")
+  # 
+  # invisible(tibble::tibble(BF = BF,
+  #                          Interpretation = Interpretation))
   
-  invisible(tibble::tibble(BF = BF,
-                           Interpretation = Interpretation))
+  tibble::tibble(BF = BF,
+                 Interpretation = Interpretation)
 }
 
 

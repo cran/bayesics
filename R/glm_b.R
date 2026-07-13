@@ -56,28 +56,8 @@
 #' probably work.)
 #' 
 #' 
-#' @returns glm_b() returns an object of class "glm_b", which behaves as a list with 
-#' the following elements:
-#' \itemize{
-#'  \item \code{summary} - tibble giving results for regression coefficients
-#'  \item \code{posterior_draws}
-#'  \item \code{ROPE}
-#'  \item \code{hyperparameters} - list giving the user input or default hyperparameters used
-#'  \item \code{fitted} - posterior mean of the individuals' means
-#'  \item \code{residuals} - posterior mean of the residuals
-#'  \item If \code{algorithm = "IS"}, the following:
-#'  \itemize{
-#'    \item \code{proposal_draws} - draws from 
-#'  the importance sampling proposal distribution (i.e., multivariate 
-#'  t centered at the posterior mode with precision equal to the 
-#'  negative hessian, and degrees of freedom set to the user input \code{proposal_df}.
-#'    \item \code{importance_sampling_weights} - importance sampling 
-#'  weights that match the rows of the returned \code{proposal_draws}.
-#'    \item \code{effective_sample_size} 
-#'    \item \code{mc_error} 
-#'  }
-#'  \item other inputs into \code{glm_b}
-#' }
+#' @returns Object of class \code{glm_b} and \code{\link[=lm_b-class]{lm_b}}.
+#' 
 #' 
 #' \strong{Importance sampling:}
 #' 
@@ -205,7 +185,7 @@ glm_b = function(formula,
                  data,
                  family,
                  trials,
-                 prior = c("zellner","normal","improper")[1],
+                 prior = c("zellner","normal","improper"),
                  zellner_g,
                  prior_beta_mean,
                  prior_beta_precision,
@@ -213,11 +193,12 @@ glm_b = function(formula,
                  ROPE,
                  CI_level = 0.95,
                  vb_maximum_iterations = 1000,
-                 algorithm = "VB",
+                 algorithm = c("VB","IS","LSA"),
                  proposal_df = 5,
                  seed = 1,
                  mc_error = 0.01,
                  save_memory = FALSE){
+  
   
   set.seed(seed)
   
@@ -230,6 +211,8 @@ glm_b = function(formula,
       model.frame(formula,data)
   }
   y = model.response(mframe)
+  if(is.character(y))
+    y = factor(y)
   if(is.factor(y)){
     y = as.integer(y)
     if(length(unique(y)) == 2) y = y - 1
@@ -279,15 +262,11 @@ glm_b = function(formula,
     prior_phi_rate = 1.0 / prior_phi_mean
   
   # Get prior on $\beta$
-  prior =
-    c("zellner","normal","improper")[pmatch(tolower(prior),
-                                            c("zellner","normal","improper"),duplicates.ok = FALSE)]
+  prior = match.arg(prior)
   
   # Get algorithm
   algorithm =
-    c("VB","IS","LSA")[pmatch(toupper(algorithm),
-                              c("VB","IS","LSA"),
-                              duplicates.ok = FALSE)]
+    match.arg(algorithm)
   
   if( ((family$family == "poisson") & (family$link != "log")) | 
       ((family$family == "binomial") & (family$link != "logit")) |
@@ -659,7 +638,7 @@ glm_b = function(formula,
       
       ## Posterior covariance matrix
       return_object$posterior_covariance = covmat
-      
+      return_object$df = Inf
       
     }#End: large sample summary
     if(algorithm == "IS"){
@@ -857,7 +836,7 @@ glm_b = function(formula,
              importance_sampling_weights = is_weights,
              effective_sample_size = ESS,
              mc_error = mc_error)
-      
+     
       
     }#End: importance sampling
     if(algorithm == "VB"){
@@ -988,6 +967,7 @@ glm_b = function(formula,
       
       ## Posterior covariance matrix
       return_object$posterior_covariance = V
+      return_object$df = Inf
       
     }
     
@@ -1052,10 +1032,11 @@ glm_b = function(formula,
           unique(return_object$data[[j]])
       }
     }
+    return_object$model_type = "parametric"
     
     
     return(structure(return_object,
-                     class = "glm_b"))
+                     class = c("glm_b","lm_b")))
   }
 }
 

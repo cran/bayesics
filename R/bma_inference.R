@@ -1,4 +1,4 @@
-#' Bayesian model averaging 
+#' Bayesian Model Averaging 
 #' 
 #' Estimates and CIs from BMA
 #' 
@@ -22,17 +22,17 @@
 #' \code{mc_error}\eqn{\times 4s_y}, that is, within 100\code{mc_error}% of the 
 #' trimmed range of y.
 #' @param seed Integer. Always set your seed!!!
+#' @param compute_residuals logical.  Should residuals and standardized 
+#' residuals be computed?  It may be memory intensive for large datasets 
+#' and small \code{mc_error}.
 #' @param ... Other arguments for \code{\link[BMS]{bms}}.
 #' 
-#' @returns A list with the following elements:
-#' \itemize{
-#'  \item summary Tibble with point and interval estimates
-#'  \item lm_b_fits A list of lm_b fits using zellner's g prior for
-#'  all the top models from \code{\link[BMS]{bms}}
-#'  \item hyperparameters A named list with the user-specified zellner's g value.
-#'  \item posterior_draws matrix of posterior draws of the regression parameters, 
-#'  marginalizing out the model
-#' }
+#' 
+#' @returns Object of class \code{lm_b_bma} and \code{\link[=lm_b-class]{lm_b}}.
+#' 
+#' @references 
+#' 
+#' Feldkircher, M. and S. Zeugner (2015): Bayesian Model Averaging Employing Fixed and Flexible Priors: The BMS Package for R, Journal of Statistical Software 68(4).
 #' 
 #' @examples
 #' \donttest{
@@ -76,7 +76,75 @@ bma_inference = function(formula,
                          n_models = 500,
                          mc_error = 0.001,
                          seed = 1,
+                         compute_residuals = TRUE,
                          ...){
+  
+  # formula
+  if (!rlang::is_formula(formula))
+    stop("`formula` must be a formula", call. = FALSE)
+  
+  # data
+  if (!inherits(data, "data.frame"))
+    stop("`data` must be a data.frame or tibble", call. = FALSE)
+  
+  if (nrow(data) == 0L)
+    stop("`data` must contain at least one row", call. = FALSE)
+  
+  # zellner_g
+  if (!is.numeric(zellner_g) ||
+      length(zellner_g) != 1 ||
+      zellner_g <= 0)
+    stop("`zellner_g` must be a positive numeric scalar", call. = FALSE)
+  
+  # CI_level
+  if (!is.numeric(CI_level) ||
+      length(CI_level) != 1)
+    stop("`CI_level` must be a numeric scalar", call. = FALSE)
+  
+  if (CI_level <= 0 || CI_level >= 1)
+    stop("`CI_level` must be between 0 and 1", call. = FALSE)
+  
+  # ROPE (optional)
+  if (!missing(ROPE)) {
+    if (!is.numeric(ROPE))
+      stop("`ROPE` must be numeric", call. = FALSE)
+    
+    if (any(ROPE <= 0))
+      stop("All values of `ROPE` must be positive", call. = FALSE)
+  }
+  
+  # mcmc_draws
+  if (!is.numeric(mcmc_draws) ||
+      length(mcmc_draws) != 1 ||
+      mcmc_draws <= 0 ||
+      mcmc_draws %% 1 != 0)
+    stop("`mcmc_draws` must be a positive integer", call. = FALSE)
+  
+  # n_models
+  if (!is.numeric(n_models) ||
+      length(n_models) != 1 ||
+      n_models <= 0 ||
+      n_models %% 1 != 0)
+    stop("`n_models` must be a positive integer", call. = FALSE)
+  
+  # mc_error
+  if (!is.numeric(mc_error) ||
+      length(mc_error) != 1 ||
+      mc_error <= 0)
+    stop("`mc_error` must be a positive numeric scalar", call. = FALSE)
+  
+  # seed
+  if (!is.numeric(seed) ||
+      length(seed) != 1 ||
+      seed %% 1 != 0)
+    stop("`seed` must be a single integer value", call. = FALSE)
+  
+  # compute_residuals
+  if (!is.logical(compute_residuals) ||
+      length(compute_residuals) != 1)
+    stop("`compute_residuals` must be TRUE or FALSE", call. = FALSE)
+  
+  
   
   alpha = 1.0 - CI_level
   
@@ -228,44 +296,44 @@ bma_inference = function(formula,
     janitor::clean_names()
   full_fits = 
     future.apply::future_lapply(1:ncol(var_inclusion),
-                  function(i){
-                    suppressWarnings(suppressPackageStartupMessages(library(bayesics)))
-                    if(sum(var_inclusion[,i]) == 0){
-                      lm_formula = 
-                        paste0(colnames(X.data)[1], " ~ 1") |> 
-                        as.formula()
-                    }else{
-                      lm_formula = 
-                        paste0(colnames(X.data)[1], " ~ ", 
-                               paste(colnames(X.data)[-1][as.logical(var_inclusion[,i])],
-                                     collapse = " + ")) |> 
-                        as.formula()
-                    }
-                    suppressMessages(
-                      lm_b(lm_formula,
-                           data = X.data,
-                           prior = "zellner",
-                           zellner_g = zellner_g)
-                    )
-                  },
-                  future.seed = seed)
+                                function(i){
+                                  suppressWarnings(suppressPackageStartupMessages(library(bayesics)))
+                                  if(sum(var_inclusion[,i]) == 0){
+                                    lm_formula = 
+                                      paste0(colnames(X.data)[1], " ~ 1") |> 
+                                      as.formula()
+                                  }else{
+                                    lm_formula = 
+                                      paste0(colnames(X.data)[1], " ~ ", 
+                                             paste(colnames(X.data)[-1][as.logical(var_inclusion[,i])],
+                                                   collapse = " + ")) |> 
+                                      as.formula()
+                                  }
+                                  suppressMessages(
+                                    lm_b(lm_formula,
+                                         data = X.data,
+                                         prior = "zellner",
+                                         zellner_g = zellner_g)
+                                  )
+                                },
+                                future.seed = seed)
   
   ## Get posterior samples
   post_samples = 
     future.apply::future_lapply(1:length(full_fits),
-                  function(i){
-                    suppressWarnings(suppressPackageStartupMessages(library(bayesics)))
-                    samples = 
-                      get_posterior_draws(full_fits[[i]],
-                                          n_draws = mc_draws_by_model[i]) |> 
-                      tibble::as_tibble()
-                    if(ncol(samples) < ncol(X.data)){ # Re dimension: Yes, X.data includes y, but the samples also ought to include s2
-                      for(j in setdiff(colnames(X.data)[-1],
-                                       colnames(samples))) samples[[j]] = 0.0
-                    }
-                    return(samples)
-                  },
-                  future.seed = seed)
+                                function(i){
+                                  suppressWarnings(suppressPackageStartupMessages(library(bayesics)))
+                                  samples = 
+                                    get_posterior_draws(full_fits[[i]],
+                                                        n_draws = mc_draws_by_model[i]) |> 
+                                    tibble::as_tibble()
+                                  if(ncol(samples) < ncol(X.data)){ # Re dimension: Yes, X.data includes y, but the samples also ought to include s2
+                                    for(j in setdiff(colnames(X.data)[-1],
+                                                     colnames(samples))) samples[[j]] = 0.0
+                                  }
+                                  return(samples)
+                                },
+                                future.seed = seed)
   post_samples = 
     do.call(bind_rows,post_samples)
   
@@ -276,7 +344,7 @@ bma_inference = function(formula,
   post_samples = 
     post_samples |> 
     dplyr::relocate(all_of(c(colnames(X.data)[-1],"s2")),
-             .after = "(Intercept)")
+                    .after = "(Intercept)")
   
   # Summarize results
   ## Get values for ROPE
@@ -307,59 +375,91 @@ bma_inference = function(formula,
     if(length(ROPE) == ncol(X) - 1) ROPE = c(NA,ROPE)
   }
   ROPE_bounds = 
-    c(
-      paste("(",-round(ROPE,3),",",round(ROPE,3),")",sep=""),
-      "(NA,NA)")
+    paste("(",-round(ROPE,3),",",round(ROPE,3),")",sep="")
   
   
   boundaries = 
-    matrix(c(ROPE,NA),
+    matrix(ROPE,
            nrow = nrow(post_samples),
-           ncol = ncol(post_samples),
+           ncol = ncol(post_samples) - 1,
            byrow = TRUE)
   
   
   ## Compile results
   results = 
-    tibble::tibble(Variable = c(colnames(X),"s2"),
-           `Post Mean` = colMeans(post_samples),
-           Lower = 
-             apply(post_samples,2,quantile,probs = alpha/2),
-           Upper =
-             apply(post_samples,2,quantile,probs = 1.0 - alpha/2),
-           `Prob Dir` = 
-             c(apply(post_samples[,-ncol(post_samples)],
-                     2,
-                     function(x) max(mean(x < 0),
-                                     mean(x > 0))),
-               NA),
-           ROPE = 
-             colMeans(
-               (-boundaries < post_samples) & 
-                 (boundaries > post_samples)
-             ),
-           `ROPE bounds` = ROPE_bounds
+    tibble::tibble(Variable = colnames(X),
+                   `Post Mean` = colMeans(post_samples[,-ncol(post_samples)]),
+                   Lower = 
+                     apply(post_samples[,-ncol(post_samples)],2,
+                           quantile,
+                           probs = alpha/2),
+                   Upper =
+                     apply(post_samples[,-ncol(post_samples)],2,
+                           quantile,
+                           probs = 1.0 - alpha/2),
+                   `Prob Dir` = 
+                     apply(post_samples[,-ncol(post_samples)],
+                           2,
+                           function(x) max(mean(x < 0),
+                                           mean(x > 0))),
+                   ROPE = 
+                     colMeans(
+                       (-boundaries < post_samples[,-ncol(post_samples)]) & 
+                         (boundaries > post_samples[,-ncol(post_samples)])
+                     ),
+                   `ROPE bounds` = ROPE_bounds
     )
   
-  # Get fitted values and NOT faux residuals
-  fitted = 
-    drop(
-      X %*% results$`Post Mean`[-nrow(results)]
-    )
-  # residuals = 
-  #   drop(
-  #     X.data[,1] - fitted
-  #   ) # This might mislead folks.  The data are NOT normally distributed.
+  # Get fitted and residuals 
+  if(compute_residuals){
+    fitted = 
+      tcrossprod(X,
+                 as.matrix(post_samples[,-ncol(post_samples)]))
+    
+    residuals =
+      X.data[,1] - fitted
+    
+    standardized_residuals = 
+      residuals / sqrt(unlist(post_samples[,ncol(post_samples)]))
+    
+    fitted = rowMeans(fitted)
+    residuals = rowMeans(residuals)
+    standardized_residuals = rowMeans(standardized_residuals)
+    
+  }else{
+    fitted = 
+      drop(
+        X %*% results$`Post Mean`
+      )
+    
+    residuals =
+      standardized_residuals = "Not computed"
+  }
+  
   
   return_object = 
     list(summary = results,
          lm_b_fits = full_fits,
          bms_fit = bms_fit,
-         hyperparms = list(zellner_g = zellner_g),
-         posterior_draws = post_samples,
+         hyperparmeters = list(zellner_g = zellner_g),
+         posterior_draws = as.matrix(post_samples),
          fitted = fitted,
+         residuals = residuals,
+         standardized_residuals = standardized_residuals,
+         sigma_sq = 
+           c(Estimate = mean(unlist(post_samples[,ncol(post_samples)])),
+             Lower = 
+               quantile(unlist(post_samples[,ncol(post_samples)]),
+                        alpha/2.0) |> 
+               unname(),
+             Upper = 
+               quantile(unlist(post_samples[,ncol(post_samples)]),
+                        1.0 - alpha/2.0) |> 
+               unname()),
          formula = formula,
          data = data,
+         family = gaussian(),
+         ROPE = ROPE,
          CI_level = CI_level,
          terms = terms(m))
   if(any(attr(return_object$terms,"dataClasses") %in% c("factor","character"))){
@@ -371,7 +471,9 @@ bma_inference = function(formula,
         unique(return_object$data[[j]])
     }
   }
+  return_object$model_type = "parametric"
+  
   
   return(structure(return_object,
-                   class = "lm_b_bma"))
+                   class = c("lm_b_bma","lm_b")))
 }

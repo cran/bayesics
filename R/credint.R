@@ -44,34 +44,65 @@ credint = function(object,...){
 credint.lm_b = function(object,
                         CI_level = 0.95,
                         ...){
-  alpha = 1 - CI_level
-  summ = object$summary[,c("Lower","Upper")]
   
-  if(object$prior != "improper"){
+  if(!inherits(object, "lm_b"))
+    stop("`object` must be an object of class \"lm_b\"", call. = FALSE)
+  
+  # CI_level
+  if (!is.numeric(CI_level) || length(CI_level) != 1)
+    stop("`CI_level` must be a numeric scalar", call. = FALSE)
+  
+  if (CI_level <= 0 || CI_level >= 1)
+    stop("`CI_level` must be between 0 and 1", call. = FALSE)
+  
+  
+  alpha = 1 - CI_level
+  p = 
+    length(setdiff(object$summary$Variable,
+                   "log(phi)"))
+  summ = object$summary[1:p,c("Lower","Upper")]
+  
+  if("posterior_covariance" %in% names(object)){ # Handles lm, glm\IS, np_glm\bootstrapping
     summ$Lower = 
-      qlst(alpha/2,
-           object$posterior_parameters$a_tilde,
-           object$posterior_parameters$mu_tilde,
-           sqrt(object$posterior_parameters$b_tilde/object$posterior_parameters$a_tilde * 
-                  diag(qr.solve(object$posterior_parameters$V_tilde))))
+      qlst(alpha / 2.0,
+           object$df,
+           object$summary$`Post Mean`[1:p],
+           sqrt(diag(as.matrix(object$posterior_covariance))[1:p]))
     summ$Upper = 
-      qlst(1.0 - alpha/2,
-           object$posterior_parameters$a_tilde,
-           object$posterior_parameters$mu_tilde,
-           sqrt(object$posterior_parameters$b_tilde/object$posterior_parameters$a_tilde * 
-                  diag(qr.solve(object$posterior_parameters$V_tilde))))
+      qlst(1.0 - alpha / 2.0,
+           object$df,
+           object$summary$`Post Mean`[1:p],
+           sqrt(diag(as.matrix(object$posterior_covariance))[1:p]))
   }else{
-    summ$Lower = 
-      qlst(alpha/2,
-           nrow(object$data) - length(object$posterior_parameters$mu_tilde),
-           object$posterior_parameters$mu_tilde,
-           sqrt(diag(object$posterior_parameters$Sigma)))
-    summ$Upper = 
-      qlst(1.0 - alpha/2,
-           nrow(object$data) - length(object$posterior_parameters$mu_tilde),
-           object$posterior_parameters$mu_tilde,
-           sqrt(diag(object$posterior_parameters$Sigma)))
+    if("importance_sampling_weights" %in% names(object)){ # Handles glm IS
+      CI_from_weighted_sample = function(x,w){
+        w = cumsum(w[order(x)])
+        x = x[order(x)]
+        LB = max(which(w <= 0.5 * alpha))
+        UB = min(which(w >= 1.0 - 0.5 * alpha))
+        return(c(lower = x[LB],
+                 upper = x[UB]))
+      }
+      CI_bounds = 
+        apply(object$proposal_draws[,1:p,drop=FALSE],2,
+              CI_from_weighted_sample,
+              w = object$importance_sampling_weights)
+      summ$Lower = 
+        CI_bounds["lower",]
+      summ$Upper = 
+        CI_bounds["upper", ]
+    }else{
+      if("posterior_draws" %in% names(object)){ # Handles np_glm bootstrapping, bma_inference
+        summ$Lower = 
+          object$posterior_draws[,1:p,drop=FALSE] |> 
+          apply(2,stats::quantile,probs = alpha/2)
+        summ$Upper =
+          object$posterior_draws[,1:p,drop=FALSE] |> 
+          apply(2,stats::quantile,probs = 1.0 - alpha/2)
+      }
+    }
   }
+  
   
   summ = 
     as.matrix(summ)
@@ -79,7 +110,7 @@ credint.lm_b = function(object,
     c(paste0(100 * 0.5 * alpha,"%"),
       paste0(100 * (1.0 - 0.5 * alpha),"%"))
   rownames(summ) = 
-    object$summary$Variable
+    object$summary$Variable[1:p]
   
   return(summ)
 }
@@ -90,15 +121,25 @@ credint.lm_b = function(object,
 #' @exportS3Method credint aov_b
 credint.aov_b = function(object,
                          CI_level = 0.95,
-                         which = "means",
+                         which = c("means","pairwise"),
                          ...){
+  
+  # object
+  if(!inherits(object, "aov_b"))
+    stop("`object` must be an object of class \"aov_b\"", call. = FALSE)
+  
+  # CI_level
+  if (!is.numeric(CI_level) || length(CI_level) != 1)
+    stop("`CI_level` must be a numeric scalar", call. = FALSE)
+  
+  if (CI_level <= 0 || CI_level >= 1)
+    stop("`CI_level` must be between 0 and 1", call. = FALSE)
+  
   
   alpha = 1 - CI_level
   
   which = 
-    c("means","pairwise")[pmatch(tolower(which),
-                                 c("means","pairwise"),
-                                 duplicates.ok = FALSE)]
+    match.arg(which)
   
   if( !(which %in% c("means","pairwise")) )
     stop("The 'which' argument must be either 'means' or 'pairwise'")
@@ -159,117 +200,6 @@ credint.aov_b = function(object,
   }#End: which == "pairwise"
   
 }
-
-
-#' @rdname credint
-#' @exportS3Method credint glm_b
-credint.glm_b = function(object,
-                         CI_level = 0.95,
-                         ...){
-  alpha = 1 - CI_level
-  summ = object$summary[,c("Lower","Upper")]
-  if("posterior_covariance" %in% names(object)){
-    summ$Lower = 
-      qnorm(alpha / 2,
-            object$summary$`Post Mean`,
-            sd = sqrt(diag(object$posterior_covariance)))
-    summ$Upper = 
-      qnorm(1 - alpha / 2,
-            object$summary$`Post Mean`,
-            sd = sqrt(diag(object$posterior_covariance)))
-  }else{
-    # Get CI bounds
-    CI_from_weighted_sample = function(x,w){
-      w = cumsum(w[order(x)])
-      x = x[order(x)]
-      LB = max(which(w <= 0.5 * alpha))
-      UB = min(which(w >= 1.0 - 0.5 * alpha))
-      return(c(lower = x[LB],
-               upper = x[UB]))
-    }
-    CI_bounds = 
-      apply(object$proposal_draws,2,
-            CI_from_weighted_sample,
-            w = object$importance_sampling_weights)
-    summ$Lower = 
-      CI_bounds["lower",]
-    summ$Upper = 
-      CI_bounds["upper", ]
-  }
-  
-  summ = 
-    as.matrix(summ)
-  colnames(summ) = 
-    c(paste0(100 * 0.5 * alpha,"%"),
-      paste0(100 * (1.0 - 0.5 * alpha),"%"))
-  rownames(summ) = 
-    object$summary$Variable
-  
-  return(summ)
-}
-
-
-#' @rdname credint
-#' @exportS3Method credint np_glm_b
-credint.np_glm_b = function(object,
-                            CI_level = 0.95,
-                            ...){
-  alpha = 1 - CI_level
-  summ = object$summary[,c("Lower","Upper")]
-  if("posterior_covariance" %in% names(object)){
-    summ$Lower = 
-      qnorm(alpha / 2,
-            object$summary$`Post Mean`,
-            sd = sqrt(diag(as.matrix(object$posterior_covariance))))
-    summ$Upper = 
-      qnorm(1 - alpha / 2,
-            object$summary$`Post Mean`,
-            sd = sqrt(diag(as.matrix(object$posterior_covariance))))
-  }else{
-    summ$Lower = 
-      object$posterior_draws |> 
-      apply(2,stats::quantile,prob = alpha / 2)
-    summ$Upper = 
-      object$posterior_draws |> 
-      apply(2,stats::quantile,prob = 1.0 - alpha / 2)
-  }
-  
-  summ = 
-    as.matrix(summ)
-  colnames(summ) = 
-    c(paste0(100 * 0.5 * alpha,"%"),
-      paste0(100 * (1.0 - 0.5 * alpha),"%"))
-  rownames(summ) = 
-    object$summary$Variable
-  
-  return(summ)
-}
-
-#' @rdname credint
-#' @exportS3Method credint lm_b_bma
-credint.lm_b_bma = function(object,
-                            CI_level = 0.95,
-                            ...){
-  alpha = 1 - CI_level
-  summ = object$summary[,c("Lower","Upper")]
-  summ$Lower = 
-    apply(object$posterior_draws,2,stats::quantile,probs = alpha/2)
-  summ$Upper =
-    apply(object$posterior_draws,2,stats::quantile,probs = 1.0 - alpha/2)
-  
-  summ = 
-    as.matrix(summ)
-  colnames(summ) = 
-    c(paste0(100 * 0.5 * alpha,"%"),
-      paste0(100 * (1.0 - 0.5 * alpha),"%"))
-  rownames(summ) = 
-    object$summary$Variable
-  
-  return(summ)
-}
-
-
-
 
 
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/bma_inference.R
 \name{bma_inference}
 \alias{bma_inference}
-\title{Bayesian model averaging}
+\title{Bayesian Model Averaging}
 \usage{
 bma_inference(
   formula,
@@ -14,6 +14,7 @@ bma_inference(
   n_models = 500,
   mc_error = 0.001,
   seed = 1,
+  compute_residuals = TRUE,
   ...
 )
 }
@@ -43,18 +44,14 @@ trimmed range of y.}
 
 \item{seed}{Integer. Always set your seed!!!}
 
+\item{compute_residuals}{logical.  Should residuals and standardized
+residuals be computed?  It may be memory intensive for large datasets
+and small \code{mc_error}.}
+
 \item{...}{Other arguments for \code{\link[BMS]{bms}}.}
 }
 \value{
-A list with the following elements:
-\itemize{
-\item summary Tibble with point and interval estimates
-\item lm_b_fits A list of lm_b fits using zellner's g prior for
-all the top models from \code{\link[BMS]{bms}}
-\item hyperparameters A named list with the user-specified zellner's g value.
-\item posterior_draws matrix of posterior draws of the regression parameters,
-marginalizing out the model
-}
+Object of class \code{lm_b_bma} and \code{\link[=lm_b-class]{lm_b}}.
 }
 \description{
 Estimates and CIs from BMA
@@ -94,4 +91,7 @@ credint(fit)
 plot(fit)
 }
 
+}
+\references{
+Feldkircher, M. and S. Zeugner (2015): Bayesian Model Averaging Employing Fixed and Flexible Priors: The BMS Package for R, Journal of Statistical Software 68(4).
 }

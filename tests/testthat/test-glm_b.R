@@ -1,5 +1,15 @@
 
-go_fast_for_cran_checks = TRUE
+do_full_testing = FALSE
+
+test_all_importance_sampling = FALSE
+
+run_parallel_code = FALSE
+
+# avoid the automatic warning from future
+suppressWarnings({
+  future.apply::future_sapply(1:2,sum)
+})
+
 
 
 # Binomial ----------------------------------------------------------------
@@ -25,34 +35,33 @@ test_that("Test glm_b for binomial data fitting with VB",{
             family = binomial(),
             seed = 2025)
   )
-  
+
   # Default fit ought to be VB
   expect_identical(fita$algorithm,"VB")
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -60,9 +69,7 @@ test_that("Test glm_b for binomial data fitting with VB",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -79,45 +86,44 @@ test_that("Test glm_b for binomial data fitting with VB",{
             predict(fita,
                     newdata = fita$data[1,],
                     PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
-  if(!go_fast_for_cran_checks){
-    expect_no_error(
-      glm_b(test_data$outcome ~ test_data$x1,
-            family = binomial(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(test_data$outcome ~ 1,
-            family = binomial(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(outcome ~ x1,
-            data = test_data,
-            family = binomial(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(outcome ~ 1,
-            data = test_data,
-            family = binomial(),
-            prior = "normal")
-    )
-  }
-    
+
+  expect_no_error(
+    glm_b(test_data$outcome ~ test_data$x1,
+          family = binomial(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(test_data$outcome ~ 1,
+          family = binomial(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(outcome ~ x1,
+          data = test_data,
+          family = binomial(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(outcome ~ 1,
+          data = test_data,
+          family = binomial(),
+          prior = "normal")
+  )
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3,
@@ -133,57 +139,94 @@ test_that("Test glm_b for binomial data fitting with VB",{
             family = binomial(),
             prior = "improper")
   )
-  
+
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu){
+                       sum((y - mu)^2/sqrt(mu * (1.0 - mu)))
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
+
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
-    
+  if(!do_full_testing){
+
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = "cr",
                          variable = "x1"),
@@ -197,10 +240,10 @@ test_that("Test glm_b for binomial data fitting with VB",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
-  
+
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3,
@@ -210,23 +253,24 @@ test_that("Test glm_b for binomial data fitting with VB",{
     )
     plan(sequential)
   }
-  
+
 })
 
 
-test_that("Test glm_b for binomial data fitting with IS",{
-  
+if(test_all_importance_sampling){
+  test_that("Test glm_b for binomial data fitting with IS",{
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5])
-  test_data$outcome = 
+  test_data$outcome =
     rbinom(N,1,1.0 / (1.0 + exp(-(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e")) ))))
-  
-  
+
+
   # Test IS fit
   expect_no_error(
     fita <-
@@ -236,34 +280,33 @@ test_that("Test glm_b for binomial data fitting with IS",{
             seed = 2025,
             algorithm = "IS")
   )
-  
+
   # Default fit ought to be VB
   expect_identical(fita$algorithm,"IS")
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -271,9 +314,7 @@ test_that("Test glm_b for binomial data fitting with IS",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -290,49 +331,47 @@ test_that("Test glm_b for binomial data fitting with IS",{
              predict(fita,
                      newdata = fita$data[1,],
                      PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
-  if(!go_fast_for_cran_checks){
-    expect_no_error(
-      glm_b(test_data$outcome ~ test_data$x1,
-            family = binomial(),
-            prior = "normal",
-            algorithm = "IS")
-    )
-    expect_no_error(
-      glm_b(test_data$outcome ~ 1,
-            family = binomial(),
-            prior = "normal",
-            algorithm = "IS")
-    )
-    expect_no_error(
-      glm_b(outcome ~ x1,
-            data = test_data,
-            family = binomial(),
-            prior = "normal",
-            algorithm = "IS")
-    )
-    expect_no_error(
-      glm_b(outcome ~ 1,
-            data = test_data,
-            family = binomial(),
-            prior = "normal",
-            algorithm = "IS")
-    )
-  }
-  
+  expect_no_error(
+    glm_b(test_data$outcome ~ test_data$x1,
+          family = binomial(),
+          prior = "normal",
+          algorithm = "IS")
+  )
+  expect_no_error(
+    glm_b(test_data$outcome ~ 1,
+          family = binomial(),
+          prior = "normal",
+          algorithm = "IS")
+  )
+  expect_no_error(
+    glm_b(outcome ~ x1,
+          data = test_data,
+          family = binomial(),
+          prior = "normal",
+          algorithm = "IS")
+  )
+  expect_no_error(
+    glm_b(outcome ~ 1,
+          data = test_data,
+          family = binomial(),
+          prior = "normal",
+          algorithm = "IS")
+  )
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3,
@@ -352,9 +391,9 @@ test_that("Test glm_b for binomial data fitting with IS",{
   )
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
-  
-  
-  
+
+
+
   # Test mc_error
   expect_no_error(
     fitc <-
@@ -365,62 +404,96 @@ test_that("Test glm_b for binomial data fitting with IS",{
             algorithm = "IS",
             mc_error = 0.1)
   )
-  if(!go_fast_for_cran_checks){
-    expect_no_error(
-      fitd <-
-        glm_b(outcome ~ x1 + x2 + x3,
-              data = test_data,
-              family = binomial(),
-              seed = 2025,
-              algorithm = "IS",
-              mc_error = 0.005)
-    )
-    expect_lt(nrow(fitc$proposal_draws),
-              nrow(fitd$proposal_draws))
-  }
+  expect_no_error(
+    fitd <-
+      glm_b(outcome ~ x1 + x2 + x3,
+            data = test_data,
+            family = binomial(),
+            seed = 2025,
+            algorithm = "IS",
+            mc_error = 0.05)
+  )
+  expect_lt(nrow(fitc$proposal_draws),
+            nrow(fitd$proposal_draws))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu){
+                       sum((y - mu)^2/sqrt(mu * (1.0 - mu)))
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(!do_full_testing){
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
@@ -437,10 +510,10 @@ test_that("Test glm_b for binomial data fitting with IS",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
-  
+
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3,
@@ -451,24 +524,25 @@ test_that("Test glm_b for binomial data fitting with IS",{
     )
     plan(sequential)
   }
-  
-  
+
+
 })
+}
 
-
+if(do_full_testing){
 test_that("Test glm_b for binomial data fitting with LSA",{
-  
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5])
-  test_data$outcome = 
+  test_data$outcome =
     rbinom(N,1,1.0 / (1.0 + exp(-(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e")) ))))
-  
-  
+
+
   # Test IS fit
   expect_no_error(
     fita <-
@@ -478,34 +552,33 @@ test_that("Test glm_b for binomial data fitting with LSA",{
             seed = 2025,
             algorithm = "LSA")
   )
-  
+
   # Default fit ought to be VB
   expect_identical(fita$algorithm,"LSA")
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -513,9 +586,7 @@ test_that("Test glm_b for binomial data fitting with LSA",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -532,49 +603,47 @@ test_that("Test glm_b for binomial data fitting with LSA",{
              predict(fita,
                      newdata = fita$data[1,],
                      PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
-  if(!go_fast_for_cran_checks){
-    expect_no_error(
-      glm_b(test_data$outcome ~ test_data$x1,
-            family = binomial(),
-            prior = "normal",
-            algorithm = "LSA")
-    )
-    expect_no_error(
-      glm_b(test_data$outcome ~ 1,
-            family = binomial(),
-            prior = "normal",
-            algorithm = "LSA")
-    )
-    expect_no_error(
-      glm_b(outcome ~ x1,
-            data = test_data,
-            family = binomial(),
-            prior = "normal",
-            algorithm = "LSA")
-    )
-    expect_no_error(
-      glm_b(outcome ~ 1,
-            data = test_data,
-            family = binomial(),
-            prior = "normal",
-            algorithm = "LSA")
-    )
-  }
-  
+  expect_no_error(
+    glm_b(test_data$outcome ~ test_data$x1,
+          family = binomial(),
+          prior = "normal",
+          algorithm = "LSA")
+  )
+  expect_no_error(
+    glm_b(test_data$outcome ~ 1,
+          family = binomial(),
+          prior = "normal",
+          algorithm = "LSA")
+  )
+  expect_no_error(
+    glm_b(outcome ~ x1,
+          data = test_data,
+          family = binomial(),
+          prior = "normal",
+          algorithm = "LSA")
+  )
+  expect_no_error(
+    glm_b(outcome ~ 1,
+          data = test_data,
+          family = binomial(),
+          prior = "normal",
+          algorithm = "LSA")
+  )
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3,
@@ -594,49 +663,85 @@ test_that("Test glm_b for binomial data fitting with LSA",{
   )
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
-  
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu){
+                       sum((y - mu)^2/sqrt(mu * (1.0 - mu)))
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(!do_full_testing){
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
@@ -653,10 +758,10 @@ test_that("Test glm_b for binomial data fitting with LSA",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
-  
+
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3,
@@ -667,27 +772,27 @@ test_that("Test glm_b for binomial data fitting with LSA",{
     )
     plan(sequential)
   }
-  
-  
+
+
 })
 
 
 test_that("Test glm_b for binomial data with >1 trials",{
-  
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5],
                n_trials = rpois(N,20))
-  test_data$outcome = 
+  test_data$outcome =
     rbinom(N,
            test_data$n_trials,
            1.0 / (1.0 + exp(-(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e")) ))))
-  
-  
+
+
   # Test VB fit
   expect_no_error(
     fita <-
@@ -707,7 +812,7 @@ test_that("Test glm_b for binomial data with >1 trials",{
   )
   expect_equal(fita$summary,
                fitb$summary)
-  
+
   expect_no_error(
     preds1 <-
       predict(fita,
@@ -723,7 +828,11 @@ test_that("Test glm_b for binomial data with >1 trials",{
   expect_lt(preds1$`Post Mean`,
             preds2$`Post Mean`)
   
-  
+  AIC(fita)
+  BIC(fita)
+  DIC(fita)
+  WAIC(fita)
+
   # Test IS fit
   expect_no_error(
     fita <-
@@ -743,7 +852,7 @@ test_that("Test glm_b for binomial data with >1 trials",{
             seed = 2025,
             algorithm = "IS")
   )
-  
+
   expect_no_error(
     preds1 <-
       predict(fita,
@@ -758,9 +867,13 @@ test_that("Test glm_b for binomial data with >1 trials",{
   )
   expect_lt(preds1$`Post Mean`,
             preds2$`Post Mean`)
+  AIC(fita)
+  BIC(fita)
+  DIC(fita)
+  WAIC(fita)
   
-  
-  # Test VB fit
+
+  # Test LSA fit
   expect_no_error(
     fita <-
       glm_b(outcome ~ x1 + x2 + x3,
@@ -781,7 +894,7 @@ test_that("Test glm_b for binomial data with >1 trials",{
   )
   expect_equal(fita$summary,
                fitb$summary)
-  
+
   expect_no_error(
     preds1 <-
       predict(fita,
@@ -796,8 +909,12 @@ test_that("Test glm_b for binomial data with >1 trials",{
   )
   expect_lt(preds1$`Post Mean`,
             preds2$`Post Mean`)
+  AIC(fita)
+  BIC(fita)
+  DIC(fita)
+  WAIC(fita)
   
-  
+
 })
 
 
@@ -806,19 +923,19 @@ test_that("Test glm_b for binomial data with >1 trials",{
 
 
 test_that("Test glm_b for poisson data fitting with VB",{
-  
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5],
                time = rexp(N))
-  test_data$outcome = 
+  test_data$outcome =
     rpois(N,exp(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e"))) * test_data$time)
-  
-  
+
+
   # Test VB fit
   expect_no_error(
     fita <-
@@ -827,34 +944,36 @@ test_that("Test glm_b for poisson data fitting with VB",{
             family = poisson(),
             seed = 2025)
   )
-  
+
   # Default fit ought to be VB
   expect_identical(fita$algorithm,"VB")
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
+  )
+  expect_silent(
+    summary(fita,print_results=FALSE)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -862,9 +981,7 @@ test_that("Test glm_b for poisson data fitting with VB",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -881,45 +998,43 @@ test_that("Test glm_b for poisson data fitting with VB",{
              predict(fita,
                      newdata = fita$data[1,],
                      PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
-  if(!go_fast_for_cran_checks){
-    expect_no_error(
-      glm_b(test_data$outcome ~ test_data$x1,
-            family = poisson(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(test_data$outcome ~ 1,
-            family = poisson(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(outcome ~ x1,
-            data = test_data,
-            family = poisson(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(outcome ~ 1,
-            data = test_data,
-            family = poisson(),
-            prior = "normal")
-    )
-  }
-  
+  expect_no_error(
+    glm_b(test_data$outcome ~ test_data$x1,
+          family = poisson(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(test_data$outcome ~ 1,
+          family = poisson(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(outcome ~ x1,
+          data = test_data,
+          family = poisson(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(outcome ~ 1,
+          data = test_data,
+          family = poisson(),
+          prior = "normal")
+  )
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -937,48 +1052,84 @@ test_that("Test glm_b for poisson data fitting with VB",{
   )
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu){
+                       sum((y - mu)^2/mu)
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(!do_full_testing){
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
@@ -987,7 +1138,7 @@ test_that("Test glm_b for poisson data fitting with VB",{
                          variable = "x1"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = "pr"),
                     c("patchwork","ggplot2::ggplot","ggplot",
@@ -1010,11 +1161,11 @@ test_that("Test glm_b for poisson data fitting with VB",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
-  
-  
+
+
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -1024,25 +1175,25 @@ test_that("Test glm_b for poisson data fitting with VB",{
     )
     plan(sequential)
   }
-  
-  
+
+
 })
 
 
 test_that("Test glm_b for poisson data fitting with IS",{
-  
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5],
                time = rexp(N))
-  test_data$outcome = 
+  test_data$outcome =
     rpois(N,exp(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e"))) * test_data$time)
-  
-  
+
+
   # Test VB fit
   expect_no_error(
     fita <-
@@ -1052,31 +1203,33 @@ test_that("Test glm_b for poisson data fitting with IS",{
             seed = 2025,
             algorithm = "IS")
   )
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
+  )
+  expect_silent(
+    summary(fita,print_results=FALSE)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -1084,9 +1237,7 @@ test_that("Test glm_b for poisson data fitting with IS",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -1103,49 +1254,47 @@ test_that("Test glm_b for poisson data fitting with IS",{
              predict(fita,
                      newdata = fita$data[1,],
                      PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
-  if(!go_fast_for_cran_checks){
-    expect_no_error(
-      glm_b(test_data$outcome ~ test_data$x1,
-            family = poisson(),
-            prior = "normal",
-            algorithm = "IS")
-    )
-    expect_no_error(
-      glm_b(test_data$outcome ~ 1,
-            family = poisson(),
-            prior = "normal",
-            algorithm = "IS")
-    )
-    expect_no_error(
-      glm_b(outcome ~ x1,
-            data = test_data,
-            family = poisson(),
-            prior = "normal",
-            algorithm = "IS")
-    )
-    expect_no_error(
-      glm_b(outcome ~ 1,
-            data = test_data,
-            family = poisson(),
-            prior = "normal",
-            algorithm = "IS")
-    )
-  }
-  
+  expect_no_error(
+    glm_b(test_data$outcome ~ test_data$x1,
+          family = poisson(),
+          prior = "normal",
+          algorithm = "IS")
+  )
+  expect_no_error(
+    glm_b(test_data$outcome ~ 1,
+          family = poisson(),
+          prior = "normal",
+          algorithm = "IS")
+  )
+  expect_no_error(
+    glm_b(outcome ~ x1,
+          data = test_data,
+          family = poisson(),
+          prior = "normal",
+          algorithm = "IS")
+  )
+  expect_no_error(
+    glm_b(outcome ~ 1,
+          data = test_data,
+          family = poisson(),
+          prior = "normal",
+          algorithm = "IS")
+  )
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -1165,48 +1314,84 @@ test_that("Test glm_b for poisson data fitting with IS",{
   )
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu){
+                       sum((y - mu)^2/mu)
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(!do_full_testing){
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
@@ -1215,7 +1400,7 @@ test_that("Test glm_b for poisson data fitting with IS",{
                          variable = "x1"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = "pr"),
                     c("patchwork","ggplot2::ggplot","ggplot",
@@ -1238,9 +1423,9 @@ test_that("Test glm_b for poisson data fitting with IS",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -1251,24 +1436,24 @@ test_that("Test glm_b for poisson data fitting with IS",{
     )
     plan(sequential)
   }
-  
+
 })
 
 
 test_that("Test glm_b for poisson data fitting with LSA",{
-  
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5],
                time = rexp(N))
-  test_data$outcome = 
+  test_data$outcome =
     rpois(N,exp(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e"))) * test_data$time)
-  
-  
+
+
   # Test VB fit
   expect_no_error(
     fita <-
@@ -1278,34 +1463,36 @@ test_that("Test glm_b for poisson data fitting with LSA",{
             seed = 2025,
             algorithm = "LSA")
   )
-  
+
   # Default fit ought to be VB
   expect_identical(fita$algorithm,"LSA")
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
+  )
+  expect_silent(
+    summary(fita,print_results=FALSE)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -1313,9 +1500,7 @@ test_that("Test glm_b for poisson data fitting with LSA",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -1332,19 +1517,19 @@ test_that("Test glm_b for poisson data fitting with LSA",{
              predict(fita,
                      newdata = fita$data[1,],
                      PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
   expect_no_error(
     glm_b(test_data$outcome ~ test_data$x1,
@@ -1372,7 +1557,7 @@ test_that("Test glm_b for poisson data fitting with LSA",{
           prior = "normal",
           algorithm = "LSA")
   )
-  
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -1392,47 +1577,83 @@ test_that("Test glm_b for poisson data fitting with LSA",{
   )
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu){
+                       sum((y - mu)^2/mu)
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(!do_full_testing){
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
@@ -1441,7 +1662,7 @@ test_that("Test glm_b for poisson data fitting with LSA",{
                          variable = "x1"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = "pr"),
                     c("patchwork","ggplot2::ggplot","ggplot",
@@ -1464,10 +1685,10 @@ test_that("Test glm_b for poisson data fitting with LSA",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
-  
+
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -1487,21 +1708,21 @@ test_that("Test glm_b for poisson data fitting with LSA",{
 
 
 test_that("Test glm_b for nbinom data fitting with VB",{
-  
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5],
                time = rexp(N))
-  test_data$outcome = 
+  test_data$outcome =
     rnbinom(N,
             mu = exp(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e"))) * test_data$time,
             size = 0.7)
-  
-  
+
+
   # Test VB fit
   expect_no_error(
     fita <-
@@ -1510,34 +1731,36 @@ test_that("Test glm_b for nbinom data fitting with VB",{
             family = negbinom(),
             seed = 2025)
   )
-  
+
   # Default fit ought to be VB
   expect_identical(fita$algorithm,"VB")
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
+  )
+  expect_silent(
+    summary(fita,print_results=FALSE)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -1545,9 +1768,7 @@ test_that("Test glm_b for nbinom data fitting with VB",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -1564,45 +1785,43 @@ test_that("Test glm_b for nbinom data fitting with VB",{
              predict(fita,
                      newdata = fita$data[1,],
                      PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
-  if(!go_fast_for_cran_checks){
-    expect_no_error(
-      glm_b(test_data$outcome ~ test_data$x1,
-            family = negbinom(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(test_data$outcome ~ 1,
-            family = negbinom(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(outcome ~ x1,
-            data = test_data,
-            family = negbinom(),
-            prior = "normal")
-    )
-    expect_no_error(
-      glm_b(outcome ~ 1,
-            data = test_data,
-            family = negbinom(),
-            prior = "normal")
-    )
-  }
-  
+  expect_no_error(
+    glm_b(test_data$outcome ~ test_data$x1,
+          family = negbinom(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(test_data$outcome ~ 1,
+          family = negbinom(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(outcome ~ x1,
+          data = test_data,
+          family = negbinom(),
+          prior = "normal")
+  )
+  expect_no_error(
+    glm_b(outcome ~ 1,
+          data = test_data,
+          family = negbinom(),
+          prior = "normal")
+  )
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -1620,48 +1839,84 @@ test_that("Test glm_b for nbinom data fitting with VB",{
   )
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu,dispersion){
+                       sum((y - mu)^2/(mu + mu^2 / dispersion))
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(!do_full_testing){
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
@@ -1670,7 +1925,7 @@ test_that("Test glm_b for nbinom data fitting with VB",{
                          variable = "x1"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = "pr"),
                     c("patchwork","ggplot2::ggplot","ggplot",
@@ -1693,11 +1948,11 @@ test_that("Test glm_b for nbinom data fitting with VB",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
-  
-  
+
+
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3,
@@ -1707,27 +1962,28 @@ test_that("Test glm_b for nbinom data fitting with VB",{
     )
     plan(sequential)
   }
-  
-  
+
+
 })
 
 
-test_that("Test glm_b for nbinom data fitting with IS",{
-  
+if(test_all_importance_sampling){
+  test_that("Test glm_b for nbinom data fitting with IS",{
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5],
                time = rexp(N))
-  test_data$outcome = 
+  test_data$outcome =
     rnbinom(N,
             mu = exp(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e"))) * test_data$time,
             size = 0.7)
-  
-  
+
+
   # Test VB fit
   expect_no_error(
     fita <-
@@ -1738,31 +1994,33 @@ test_that("Test glm_b for nbinom data fitting with IS",{
             algorithm = "IS",
             mc_error = 0.05)
   )
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
+  )
+  expect_silent(
+    summary(fita,print_results=FALSE)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -1770,9 +2028,7 @@ test_that("Test glm_b for nbinom data fitting with IS",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -1789,53 +2045,51 @@ test_that("Test glm_b for nbinom data fitting with IS",{
              predict(fita,
                      newdata = fita$data[1,],
                      PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
-  if(!go_fast_for_cran_checks){
-    expect_no_error(
-      glm_b(test_data$outcome ~ test_data$x1,
-            family = negbinom(),
-            prior = "normal",
-            algorithm = "IS",
-            mc_error = 0.05)
-    )
-    expect_no_error(
-      glm_b(test_data$outcome ~ 1,
-            family = negbinom(),
-            prior = "normal",
-            algorithm = "IS",
-            mc_error = 0.05)
-    )
-    expect_no_error(
-      glm_b(outcome ~ x1,
-            data = test_data,
-            family = negbinom(),
-            prior = "normal",
-            algorithm = "IS",
-            mc_error = 0.05)
-    )
-    expect_no_error(
-      glm_b(outcome ~ 1,
-            data = test_data,
-            family = negbinom(),
-            prior = "normal",
-            algorithm = "IS",
-            mc_error = 0.05)
-    )
-  }
-  
+  expect_no_error(
+    glm_b(test_data$outcome ~ test_data$x1,
+          family = negbinom(),
+          prior = "normal",
+          algorithm = "IS",
+          mc_error = 0.05)
+  )
+  expect_no_error(
+    glm_b(test_data$outcome ~ 1,
+          family = negbinom(),
+          prior = "normal",
+          algorithm = "IS",
+          mc_error = 0.05)
+  )
+  expect_no_error(
+    glm_b(outcome ~ x1,
+          data = test_data,
+          family = negbinom(),
+          prior = "normal",
+          algorithm = "IS",
+          mc_error = 0.05)
+  )
+  expect_no_error(
+    glm_b(outcome ~ 1,
+          data = test_data,
+          family = negbinom(),
+          prior = "normal",
+          algorithm = "IS",
+          mc_error = 0.05)
+  )
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -1857,48 +2111,84 @@ test_that("Test glm_b for nbinom data fitting with IS",{
   )
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu,dispersion){
+                       sum((y - mu)^2/(mu + mu^2 / dispersion))
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(!do_full_testing){
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
@@ -1907,7 +2197,7 @@ test_that("Test glm_b for nbinom data fitting with IS",{
                          variable = "x1"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = "pr"),
                     c("patchwork","ggplot2::ggplot","ggplot",
@@ -1930,9 +2220,9 @@ test_that("Test glm_b for nbinom data fitting with IS",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3,
@@ -1944,26 +2234,27 @@ test_that("Test glm_b for nbinom data fitting with IS",{
     )
     plan(sequential)
   }
-  
+
 })
+}
 
 
 test_that("Test glm_b for nbinom data fitting with LSA",{
-  
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5],
                time = rexp(N))
-  test_data$outcome = 
+  test_data$outcome =
     rnbinom(N,
             mu = exp(-2 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e"))) * test_data$time,
             size = 0.7)
-  
-  
+
+
   # Test VB fit
   expect_no_error(
     fita <-
@@ -1973,31 +2264,33 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
             seed = 2025,
             algorithm = "LSA")
   )
-  
+
   # Make sure print works
   expect_no_error(fita)
-  
+
   # Make sure coef works
   expect_type(coef(fita),"double")
-  
+
   # Make sure credint works
   expect_true(is.matrix(credint(fita)))
-  
+
   # Make sure vcov works
   expect_true(is.matrix(vcov(fita)))
-  
+
   # Make sure summary works
   expect_no_error(
-    s <- 
+    s <-
       summary(fita)
+  )
+  expect_silent(
+    summary(fita,print_results=FALSE)
   )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
-  
+
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -2005,9 +2298,7 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
-  
+
   # Make sure prediction function works
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
@@ -2024,19 +2315,19 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
              predict(fita,
                      newdata = fita$data[1,],
                      PI_level = 0.9)$PI_lower[1])
-  
+
   # Make sure savage-dickey ratio works
   expect_s3_class(bayes_factors(fita),
                   c("tbl_df", "tbl", "data.frame"))
   expect_s3_class(bayes_factors(fita,by = "v"),
                   c("tbl_df", "tbl", "data.frame"))
-  
+
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
   expect_type(DIC(fita),"double")
   expect_type(WAIC(fita),"double")
-  
+
   # Test number of inputs
   expect_no_error(
     glm_b(test_data$outcome ~ test_data$x1,
@@ -2064,7 +2355,7 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
           prior = "normal",
           algorithm = "LSA")
   )
-  
+
   # Test different priors
   expect_no_error(
     glm_b(outcome ~ x1 + x2 + x3 + offset(log(time)),
@@ -2084,47 +2375,83 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
   )
   ## Make sure bayes_factors doesn't work for improper prior
   expect_error(bayes_factors(fitb))
+
+
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples),
+                        c("matrix","array")))
+
+
+  # Check Bayesian p-values
+  expect_no_error(
+    bpvals <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05)
+  )
+  expect_named(bpvals,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals[[1]],"double")
+  expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
   
-  
+  # Check custom Bayesian p-value
+  expect_no_error(
+    bpvals_custom <-
+      bayes_pvalue(fita,
+                   mc_error = 0.05,
+                   statistic = 
+                     function(y,mu,dispersion){
+                       sum((y - mu)^2/(mu + mu^2 / dispersion))
+                     }
+      )
+  )
+  expect_named(bpvals_custom,
+               c("bpvalue",
+                 "statistic_posterior_draws"))
+  expect_type(bpvals_custom[[1]],"double")
+  expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+
+
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(!do_full_testing){
     expect_s3_class(plot(fita,
                          type = "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
-    expect_s3_class(plot(fita,
-                         type = "pdp"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
                          variable = "x1",
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE,
+                         combine_pred_cred = TRUE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = TRUE),
+                         combine_pred_cred = TRUE),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
                          type = c("cr","pr"),
-                         combine_pi_ci = FALSE,
+                         combine_pred_cred = FALSE,
                          exemplar_covariates = fita$data[1,]),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
@@ -2133,7 +2460,7 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
                          variable = "x1"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-    
+
     expect_s3_class(plot(fita,
                          type = "pr"),
                     c("patchwork","ggplot2::ggplot","ggplot",
@@ -2156,10 +2483,10 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
   }
-  
-  
+
+
   # Check parallelization
-  if(!go_fast_for_cran_checks){
+  if(run_parallel_code & do_full_testing){
     plan(multisession,workers = 5)
     expect_no_error(
       glm_b(outcome ~ x1 + x2 + x3,
@@ -2170,7 +2497,7 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
     )
     plan(sequential)
   }
-  
+
 })
 
 
@@ -2178,50 +2505,50 @@ test_that("Test glm_b for nbinom data fitting with LSA",{
 # Gaussian ----------------------------------------------------------------
 
 test_that("Test glm_b for gaussian data. Should pass directly on to lm_b.",{
-  
+
   # Generate some data
   set.seed(2025)
   N = 100
-  test_data = 
+  test_data =
     data.frame(x1 = rnorm(N),
                x2 = rnorm(N),
                x3 = letters[1:5])
-  test_data$outcome = 
+  test_data$outcome =
     rnorm(N,-1 + test_data$x1 + 2 * (test_data$x3 %in% c("d","e")) )
-  
-  
+
+
   expect_no_error(
-    fita <- 
+    fita <-
       glm_b(outcome ~ x1 + x2 + x3,
             data = test_data,
             prior = "normal",
             family = "gaussian")
   )
-  fitb = 
+  fitb =
     lm_b(outcome ~ x1 + x2 + x3,
          data = test_data,
          prior = "conjugate")
   expect_equal(fita$summary,
                fitb$summary)
-  
+
   expect_no_error(
-    fitc <- 
+    fitc <-
       glm_b(outcome ~ x1 + x2 + x3,
             data = test_data,
             prior = "zelln",
             family = "gaussian")
   )
-  fitd = 
+  fitd =
     lm_b(outcome ~ x1 + x2 + x3,
          data = test_data,
          prior = "z")
   expect_equal(fitc$summary,
                fitd$summary)
-  
-  
+
+
 })
 
 
-
+}
 
 

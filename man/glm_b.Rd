@@ -9,7 +9,7 @@ glm_b(
   data,
   family,
   trials,
-  prior = c("zellner", "normal", "improper")[1],
+  prior = c("zellner", "normal", "improper"),
   zellner_g,
   prior_beta_mean,
   prior_beta_precision,
@@ -17,7 +17,7 @@ glm_b(
   ROPE,
   CI_level = 0.95,
   vb_maximum_iterations = 1000,
-  algorithm = "VB",
+  algorithm = c("VB", "IS", "LSA"),
   proposal_df = 5,
   seed = 1,
   mc_error = 0.01,
@@ -92,28 +92,7 @@ large sample size, in which case the normal approximation sans IS should
 probably work.)}
 }
 \value{
-glm_b() returns an object of class "glm_b", which behaves as a list with
-the following elements:
-\itemize{
-\item \code{summary} - tibble giving results for regression coefficients
-\item \code{posterior_draws}
-\item \code{ROPE}
-\item \code{hyperparameters} - list giving the user input or default hyperparameters used
-\item \code{fitted} - posterior mean of the individuals' means
-\item \code{residuals} - posterior mean of the residuals
-\item If \code{algorithm = "IS"}, the following:
-\itemize{
-\item \code{proposal_draws} - draws from
-the importance sampling proposal distribution (i.e., multivariate
-t centered at the posterior mode with precision equal to the
-negative hessian, and degrees of freedom set to the user input \code{proposal_df}.
-\item \code{importance_sampling_weights} - importance sampling
-weights that match the rows of the returned \code{proposal_draws}.
-\item \code{effective_sample_size}
-\item \code{mc_error}
-}
-\item other inputs into \code{glm_b}
-}
+Object of class \code{glm_b} and \code{\link[=lm_b-class]{lm_b}}.
 
 \strong{Importance sampling:}
 

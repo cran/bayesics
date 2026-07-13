@@ -1,6 +1,6 @@
 #' Bayesian Linear Models
 #' 
-#' lm_b is used to fit linear models.  It can be used to carry out 
+#' \code{lm_b} is used to fit linear models.  It can be used to carry out 
 #' regression, single stratum analysis of variance and analysis of 
 #' covariance (although aov_b may provide a more convenient 
 #' interface for ANOVA.)
@@ -9,7 +9,7 @@
 #' @param data A data frame in which the variables specified in the formula 
 #' will be found. If missing, the variables are searched for in the standard way.  
 #' However, it is strongly recommended that you use this argument so that other 
-#' generics for bayesics objects work correctly.
+#' generics for \code{bayesics} objects work correctly.
 #' @param weights an optional vector of weights to be used in the fitting process. 
 #' Should be NULL or a numeric vector. If non-NULL, it is assumed that the 
 #' variance of \eqn{y_i} can be written as \eqn{Var(y_i) = \sigma^2/w_i}. While the 
@@ -34,16 +34,9 @@
 #' If missing, defaults go to those suggested by Kruchke (2018).
 #' @param CI_level numeric. Credible interval level.
 #' 
-#' @returns lm_b() returns an object of class "lm_b", which behaves as a list with 
-#' the following elements:
-#' \itemize{
-#'  \item summary - tibble giving results for regression coefficients
-#'  \item posterior_parameters - list giving the posterior parameters
-#'  \item hyperparameters - list giving the user input (or default) hyperparameters used
-#'  \item fitted - posterior mean of the individuals' means
-#'  \item residuals - posterior mean of the residuals
-#'  \item formula, data - input by user
-#' }
+#' @returns Object of class \code{\link[=lm_b-class]{lm_b}}.
+#' 
+#' 
 #' 
 #' @details
 #' 
@@ -164,7 +157,7 @@
 lm_b = function(formula,
                 data,
                 weights,
-                prior = c("zellner","conjugate","improper")[1],
+                prior = c("zellner","conjugate","improper"),
                 zellner_g,
                 prior_beta_mean,
                 prior_beta_precision,
@@ -240,9 +233,7 @@ lm_b = function(formula,
     s_j = apply(X[,-1,drop = FALSE],2,sd)
   
   
-  prior = 
-    c("zellner","conjugate","improper")[pmatch(tolower(prior),
-                                               c("zellner","conjugate","improper"),duplicates.ok = FALSE)]
+  prior = match.arg(prior)
   
   if(prior == "zellner"){
     if(missing(zellner_g)){
@@ -469,17 +460,32 @@ lm_b = function(formula,
       list(summary = results,
            posterior_parameters = list(mu_tilde = mu_tilde,
                                        V_tilde = XtX,
-                                       Sigma = Sigma,
                                        a_tilde = N - p,
                                        b_tilde = sum(resid(mod)^2)),
            hyperparameters = NA)
   }
   
-  
+  return_object$sigma_sq = 
+    c(Estimate = 
+        unname(
+          return_object$posterior_parameters$b_tilde /
+            (return_object$posterior_parameters$a_tilde - 1.0)
+        ),
+      Lower = 
+        extraDistr::qinvgamma(alpha / 2.0,
+                              0.5 * return_object$posterior_parameters$a_tilde,
+                              0.5 * return_object$posterior_parameters$b_tilde),
+      Upper = 
+        extraDistr::qinvgamma(1.0 - alpha / 2.0,
+                              0.5 * return_object$posterior_parameters$a_tilde,
+                              0.5 * return_object$posterior_parameters$b_tilde))
   return_object$fitted = 
     drop(X %*% return_object$summary$`Post Mean`)
   return_object$residuals = 
     drop(y - return_object$fitted)
+  return_object$standardized_residuals = 
+    drop(y - return_object$fitted) / 
+    sqrt(return_object$sigma_sq["Estimate"])
   
   return_object$formula = formula
   if(missing(data)){
@@ -487,9 +493,17 @@ lm_b = function(formula,
   }else{
     return_object$data = data
   }
+  return_object$family = gaussian()
   return_object$prior = prior
   return_object$ROPE = ROPE
   return_object$CI_level = CI_level
+  return_object$posterior_covariance = 
+    return_object$posterior_parameters$b_tilde / 
+    return_object$posterior_parameters$a_tilde *
+    qr.solve(return_object$posterior_parameters$V_tilde)
+  return_object$df = 
+    return_object$posterior_parameters$a_tilde
+  return_object$weights = weights
   
   rownames(return_object$summary) = NULL
   
@@ -504,6 +518,7 @@ lm_b = function(formula,
         unique(return_object$data[[j]])
     }
   }
+  return_object$model_type = "parametric"
   
   
   return(structure(return_object,

@@ -1,0 +1,56 @@
+#' \code{lm_b} Objects
+#'
+#' Objects of Class \code{lm_b} 
+#'
+#' @details
+#' An object of class \code{lm_b} contains at least the following:
+#'
+#' \describe{
+#'   \item{summary}{Tibble giving the summary of the model parameters of 
+#'   having a minimum of:
+#'      \describe{
+#'        \item{\code{Variable}}{character}
+#'        \item{\code{Post Mean}}{Numeric}
+#'        \item{\code{Lower}}{Numeric}
+#'        \item{\code{Upper}}{Numeric}
+#'        \item{\code{Prob Dir}}{Numeric}
+#'      }
+#'   }
+#'   \item{\code{formula}}{}
+#'   \item{\code{data}}{A tibble containing the data used in the analysis.}
+#'   \item{\code{CI_level}}{Numeric scalar giving the credible interval level as 
+#'   provided by the user.}
+#'   \item{\code{fitted}}{Vector of fitted values}
+#'   \item{\code{residuals}}{Vector of Pearson residuals}
+#'   \item{\code{family}}{}
+#'   \item{\code{xlevels}}{Named list, giving the levels for each factor covariate.}
+#'   \item{\code{model_type}}{ Character, either "parametric" or "nonparametric".}
+#' }
+#' 
+#' Further, one and only one of the following must be contained:
+#' \describe{
+#'    \item{\code{posterior_covariance}}{matrix}
+#'    \item{\code{importance_sampling_weights},\code{proposal_draws}}{Numeric and matrix, respectively}
+#'    \item{\code{posterior_draws}}{matrix}
+#' }
+#' 
+#' 
+#' 
+#' @section S3 methods:
+#' Methods are available for \code{print()} and \code{plot()},
+#' depending on which components are present.
+#'
+#' @seealso
+#' \code{\link{print.b_procedure}},
+#' \code{\link{plot.b_procedure}}
+#'
+#' @examples
+#' \dontrun{
+#' cc_fit <- case_control_b(matrix(c(8,47,1,26),2,2))
+#' cc_fit
+#' plot(cc_fit)
+#' }
+#'
+#' @name lm_b-class
+#' @docType class
+NULL

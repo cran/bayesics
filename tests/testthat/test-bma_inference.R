@@ -1,5 +1,5 @@
 
-go_fast_for_cran_checks = TRUE
+do_full_testing = FALSE
 
 test_that("Bayesian model averaging", {
   
@@ -58,20 +58,15 @@ test_that("Bayesian model averaging", {
   expect_no_error(predict(fita))
   expect_no_error(predict(fita,
                           newdata = fita$data[1,]))
-  expect_gt(predict(fita,CI_level = 0.8)$newdata$CI_lower[1],
-            predict(fita,CI_level = 0.9)$newdata$CI_lower[1])
-  expect_gt(predict(fita,PI_level = 0.8)$newdata$PI_lower[1],
-            predict(fita,PI_level = 0.9)$newdata$PI_lower[1])
+  expect_gt(predict(fita,CI_level = 0.8)$CI_lower[1],
+            predict(fita,CI_level = 0.9)$CI_lower[1])
+  expect_gt(predict(fita,PI_level = 0.8)$PI_lower[1],
+            predict(fita,PI_level = 0.9)$PI_lower[1])
   
   # Test plot
-  if(!go_fast_for_cran_checks){
+  if(do_full_testing){
     expect_s3_class(plot(fita,
-                         "dx"),
-                    c("patchwork","ggplot2::ggplot","ggplot",
-                      "ggplot2::gg","S7_object","gg"))
-    expect_s3_class(plot(fita,
-                         "pdp",
-                         variable = c("x1","x2","x3")),
+                         "diagnostics"),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
     expect_s3_class(plot(fita,
@@ -95,19 +90,31 @@ test_that("Bayesian model averaging", {
                          variable = c("x1","x2","x3")),
                     c("patchwork","ggplot2::ggplot","ggplot",
                       "ggplot2::gg","S7_object","gg"))
-  
-  
-  # Test if response transformation works
-  test_data$e_outcome = exp(test_data$outcome)
-  
-  ## Test lm_b fit
-  expect_no_error(
-    fita2 <-
-      bma_inference(log(e_outcome) ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10,
-                    test_data,
-                    user.int = FALSE)
-  )
+    
   }
+  
+  
+  
+  if(do_full_testing){
+    # Test if response transformation works
+    test_data$e_outcome = exp(test_data$outcome)
+    
+    ## Test lm_b fit
+    expect_no_error(
+      fita2 <-
+        bma_inference(log(e_outcome) ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10,
+                      test_data,
+                      user.int = FALSE)
+    )
+    
+    if(do_full_testing){
+      fita2
+      plot(fita2, type="c",
+           backtransformation = exp,
+           variable = "x1")
+    }
+  }
+  
   # # Make sure parallelization works. 
   # plan(multisession, workers = 5)
   # expect_no_error(

@@ -2,7 +2,7 @@
 % Please edit documentation in R/mediate_b.R
 \name{mediate_b}
 \alias{mediate_b}
-\title{Mediation using Bayesian methods}
+\title{Mediation using Bayesian Methods}
 \usage{
 mediate_b(
   model_m,
@@ -19,9 +19,9 @@ mediate_b(
 )
 }
 \arguments{
-\item{model_m}{a fitted model object of class lm_b for mediator.}
+\item{model_m}{a fitted model object of class \code{lm_b} or \code{glm_b} for mediator.}
 
-\item{model_y}{a fitted model object of class lm_b for outcome.}
+\item{model_y}{a fitted model object of class \code{lm_b} or \code{glm_b} for outcome.}
 
 \item{treat}{a character string indicating the name of the
 treatment variable used in the models.  NOTE: Treatment variable must be
@@ -64,8 +64,7 @@ to match the scale of the outcome
 }
 }
 \description{
-Mediation analysis done in the framework of Imai et al. (2010).  Currently
-only applicable to linear models.
+Mediation analysis done in the framework of Imai et al. (2010).
 }
 \details{
 The model is the same as that of Imai et al. (2010):

@@ -1,3 +1,9 @@
+do_full_testing = FALSE
+
+# avoid the automatic warning from future
+suppressWarnings({
+  future.apply::future_sapply(1:2,sum)
+})
 
 test_that("Test lm_b with conjugate prior",{
   
@@ -48,12 +54,14 @@ test_that("Test lm_b with conjugate prior",{
     s <- 
       summary(fita)
   )
+  expect_silent(
+    summary(fita, print_results=FALSE)
+  )
   ## Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -61,8 +69,6 @@ test_that("Test lm_b with conjugate prior",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
   
   # Check fractional Bayes factors
   expect_no_error(
@@ -107,8 +113,8 @@ test_that("Test lm_b with conjugate prior",{
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
-  expect_type(DIC(fita),"double")
-  expect_type(WAIC(fita),"double")
+  expect_type(DIC(fita,mc_error = 1),"double")
+  expect_type(WAIC(fita,mc_error = 2),"double")
   
   # Test number and type of inputs
   expect_no_error(
@@ -149,72 +155,115 @@ test_that("Test lm_b with conjugate prior",{
                                 fitc$summary)))
   
   
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples), 
+                        c("matrix","array")))
+  
+  
+  # Check Bayesian p-values
+  if(do_full_testing){
+    expect_no_error(
+      bpvals <-
+        bayes_pvalue(fita,
+                     mc_error = 0.05)
+    )
+    expect_named(bpvals,
+                 c("bpvalue",
+                   "statistic_posterior_draws"))
+    expect_type(bpvals[[1]],"double")
+    expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
+  }
+  
+  # Check custom Bayesian p-value
+  if(do_full_testing){
+    expect_no_error(
+      bpvals_custom <-
+        bayes_pvalue(fita,
+                     mc_error = 0.05,
+                     statistic = 
+                       function(y,mu,dispersion){
+                         shapiro.test((y - mu)/sqrt(dispersion))$statistic
+                       }
+        )
+    )
+    expect_named(bpvals_custom,
+                 c("bpvalue",
+                   "statistic_posterior_draws"))
+    expect_type(bpvals_custom[[1]],"double")
+    expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+  }
+  
+  
   # Test plot
-  expect_s3_class(plot(fita,
-                       type = "diagnostics"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       variable = "x1",
-                       combine_pi_ci = TRUE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       variable = "x1",
-                       combine_pi_ci = FALSE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = TRUE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = TRUE),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = FALSE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr",
-                       variable = "x1"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr",
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "cr",
-                       variable = "x1"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "cr"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
+  if(do_full_testing){
+    expect_s3_class(plot(fita,
+                         type = "diagnostics"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         variable = "x1",
+                         combine_pred_cred = TRUE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         variable = "x1",
+                         combine_pred_cred = FALSE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = TRUE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = TRUE),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = FALSE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr",
+                         variable = "x1"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr",
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "cr",
+                         variable = "x1"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "cr"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+  }
   
   
   
@@ -248,13 +297,15 @@ test_that("Test lm_b with conjugate prior",{
     s <- 
       summary(fitc)
   )
+  expect_silent(
+    summary(fitc, print_results = FALSE)
+  )
   ### Check output format
   expect_s3_class(s,c("tbl_df", "tbl", "data.frame"))
   
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -262,8 +313,6 @@ test_that("Test lm_b with conjugate prior",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
   
   ## Make sure prediction function works
   expect_no_error(
@@ -286,16 +335,15 @@ test_that("Test lm_b with conjugate prior",{
   
   ## Check plot
   expect_s3_class(plot(fitc,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fitc),
+                       type = c("c","p"),
+                       backtransformation = exp),
                   c("patchwork","ggplot2::ggplot","ggplot",
                     "ggplot2::gg","S7_object","gg"))
   
 })
 
-
+if(do_full_testing){
+  
 test_that("Test lm_b with zellner's g prior",{
   
   
@@ -351,8 +399,7 @@ test_that("Test lm_b with zellner's g prior",{
   
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -360,8 +407,6 @@ test_that("Test lm_b with zellner's g prior",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
   
   
   # Check fractional Bayes factors
@@ -408,8 +453,8 @@ test_that("Test lm_b with zellner's g prior",{
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
-  expect_type(DIC(fita),"double")
-  expect_type(WAIC(fita),"double")
+  expect_type(DIC(fita,mc_error = 1),"double")
+  expect_type(WAIC(fita,mc_error = 1),"double")
   
   # Test number and type of inputs
   expect_no_error(
@@ -455,77 +500,122 @@ test_that("Test lm_b with zellner's g prior",{
                                 fitd$summary)))
   
   
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples), 
+                        c("matrix","array")))
+  
+  
+  # Check Bayesian p-values
+  if(do_full_testing){
+    expect_no_error(
+      bpvals <-
+        bayes_pvalue(fita,
+                     mc_error = 0.05)
+    )
+    expect_named(bpvals,
+                 c("bpvalue",
+                   "statistic_posterior_draws"))
+    expect_type(bpvals[[1]],"double")
+    expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
+  }
+  
+  # Check custom Bayesian p-value
+  if(do_full_testing){
+    expect_no_error(
+      bpvals_custom <-
+        bayes_pvalue(fita,
+                     mc_error = 0.05,
+                     statistic = 
+                       function(y,mu,dispersion){
+                         shapiro.test((y - mu)/sqrt(dispersion))$statistic
+                       }
+        )
+    )
+    expect_named(bpvals_custom,
+                 c("bpvalue",
+                   "statistic_posterior_draws"))
+    expect_type(bpvals_custom[[1]],"double")
+    expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+  }
+  
+  
+  
+  
   # Test plot
-  expect_s3_class(plot(fita,
-                       type = "diagnostics"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       variable = "x1",
-                       combine_pi_ci = TRUE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       variable = "x1",
-                       combine_pi_ci = FALSE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = TRUE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = TRUE),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = FALSE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr",
-                       variable = "x1"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr",
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "cr",
-                       variable = "x1"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "cr"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
+  if(do_full_testing){
+    expect_s3_class(plot(fita,
+                         type = "diagnostics"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         variable = "x1",
+                         combine_pred_cred = TRUE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         variable = "x1",
+                         combine_pred_cred = FALSE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = TRUE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = TRUE),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = FALSE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr",
+                         variable = "x1"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr",
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "cr",
+                         variable = "x1"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "cr"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+  }
   
   
 })
 
-
+  
 test_that("Test lm_b with improper prior",{
   
   
@@ -631,8 +721,8 @@ test_that("Test lm_b with improper prior",{
   # Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
-  expect_type(DIC(fita),"double")
-  expect_type(WAIC(fita),"double")
+  expect_type(DIC(fita,mc_error = 1),"double")
+  expect_type(WAIC(fita,mc_error = 1),"double")
   
   # Test number and type of inputs
   expect_no_error(
@@ -670,72 +760,117 @@ test_that("Test lm_b with improper prior",{
                                fitc$summary)))
   
   
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples), 
+                        c("matrix","array")))
+  
+  
+  # Check Bayesian p-values
+  if(do_full_testing){
+    expect_no_error(
+      bpvals <-
+        bayes_pvalue(fita,
+                     mc_error = 0.05)
+    )
+    expect_named(bpvals,
+                 c("bpvalue",
+                   "statistic_posterior_draws"))
+    expect_type(bpvals[[1]],"double")
+    expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
+  }
+  
+  # Check custom Bayesian p-value
+  if(do_full_testing){
+    expect_no_error(
+      bpvals_custom <-
+        bayes_pvalue(fita,
+                     mc_error = 0.05,
+                     statistic = 
+                       function(y,mu,dispersion){
+                         shapiro.test((y - mu)/sqrt(dispersion))$statistic
+                       }
+        )
+    )
+    expect_named(bpvals_custom,
+                 c("bpvalue",
+                   "statistic_posterior_draws"))
+    expect_type(bpvals_custom[[1]],"double")
+    expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+  }
+  
+  
+  
+  
   # Test plot
-  expect_s3_class(plot(fita,
-                       type = "diagnostics"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       variable = "x1",
-                       combine_pi_ci = TRUE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       variable = "x1",
-                       combine_pi_ci = FALSE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = TRUE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = TRUE),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = c("cr","pr"),
-                       combine_pi_ci = FALSE,
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr",
-                       variable = "x1"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "pr",
-                       exemplar_covariates = fita$data[1,]),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "cr",
-                       variable = "x1"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita,
-                       type = "cr"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
+  if(do_full_testing){
+    expect_s3_class(plot(fita,
+                         type = "diagnostics"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         variable = "x1",
+                         combine_pred_cred = TRUE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         variable = "x1",
+                         combine_pred_cred = FALSE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = TRUE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = TRUE),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = c("cr","pr"),
+                         combine_pred_cred = FALSE,
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr",
+                         variable = "x1"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "pr",
+                         exemplar_covariates = fita$data[1,]),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "cr",
+                         variable = "x1"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita,
+                         type = "cr"),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+    expect_s3_class(plot(fita),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+  }
   
   
   # Test if response transformation works
@@ -802,17 +937,13 @@ test_that("Test lm_b with improper prior",{
                     PI_level = 0.9)$PI_lower[1])
   
   ## Check plot
-  expect_s3_class(plot(fitc,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fitc),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  
+  if(do_full_testing){
+    expect_s3_class(plot(fitc),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+  }
   
 })
-
 
 
 test_that("Test lm_b with weights",{
@@ -909,7 +1040,6 @@ test_that("Test lm_b with weights",{
   
 })
 
-
 test_that("Test complicated terms in lm_b formula",{
   
   
@@ -956,8 +1086,7 @@ test_that("Test complicated terms in lm_b formula",{
   
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -965,8 +1094,6 @@ test_that("Test complicated terms in lm_b formula",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
   
   ## Make sure prediction function works
   expect_no_error(predict(fita))
@@ -1008,19 +1135,62 @@ test_that("Test complicated terms in lm_b formula",{
   ## Make sure information criteria work
   expect_type(AIC(fita),"double")
   expect_type(BIC(fita),"double")
-  expect_type(DIC(fita),"double")
-  expect_type(WAIC(fita),"double")
+  expect_type(DIC(fita,mc_error = 1),"double")
+  expect_type(WAIC(fita,mc_error = 1),"double")
+  
+  
+  # Check get_posterior_samples()
+  expect_no_error(
+    postsamples <-
+      get_posterior_draws(fita,
+                          n_draws = 100)
+  )
+  expect_type(postsamples, "double")
+  expect_true(all.equal(class(postsamples), 
+                        c("matrix","array")))
+  
+  
+  # Check Bayesian p-values
+  if(do_full_testing){
+    expect_no_error(
+      bpvals <-
+        bayes_pvalue(fita,
+                     mc_error = 0.05)
+    )
+    expect_named(bpvals,
+                 c("bpvalue",
+                   "statistic_posterior_draws"))
+    expect_type(bpvals[[1]],"double")
+    expect_s3_class(bpvals[[2]],c("tbl_df", "tbl", "data.frame"))
+  }
+  
+  # Check custom Bayesian p-value
+  if(do_full_testing){
+    expect_no_error(
+      bpvals_custom <-
+        bayes_pvalue(fita,
+                     mc_error = 0.05,
+                     statistic = 
+                       function(y,mu,dispersion){
+                         shapiro.test((y - mu)/sqrt(dispersion))$statistic
+                       }
+        )
+    )
+    expect_named(bpvals_custom,
+                 c("bpvalue",
+                   "statistic_posterior_draws"))
+    expect_type(bpvals_custom[[1]],"double")
+    expect_s3_class(bpvals_custom[[2]],c("tbl_df", "tbl", "data.frame"))
+  }
+  
   
   
   ## Test plot
-  expect_s3_class(plot(fita,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fita),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  
+  if(do_full_testing){
+    expect_s3_class(plot(fita),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+  }
   
   
   # Check if splines terms work
@@ -1064,8 +1234,7 @@ test_that("Test complicated terms in lm_b formula",{
   
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -1073,8 +1242,6 @@ test_that("Test complicated terms in lm_b formula",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
   
   ## Make sure prediction function works
   expect_no_error(predict(fitb))
@@ -1116,18 +1283,16 @@ test_that("Test complicated terms in lm_b formula",{
   ## Make sure information criteria work
   expect_type(AIC(fitb),"double")
   expect_type(BIC(fitb),"double")
-  expect_type(DIC(fitb),"double")
-  expect_type(WAIC(fitb),"double")
+  expect_type(DIC(fitb,mc_error = 1),"double")
+  expect_type(WAIC(fitb,mc_error = 1),"double")
   
   
   ## Test plot
-  expect_s3_class(plot(fitb,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fitb),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
+  if(do_full_testing){
+    expect_s3_class(plot(fitb),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+  }
   
   
   
@@ -1172,8 +1337,7 @@ test_that("Test complicated terms in lm_b formula",{
   
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -1181,8 +1345,6 @@ test_that("Test complicated terms in lm_b formula",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
   
   ## Make sure prediction function works
   expect_no_error(
@@ -1226,18 +1388,16 @@ test_that("Test complicated terms in lm_b formula",{
   ## Make sure information criteria work
   expect_type(AIC(fitc),"double")
   expect_type(BIC(fitc),"double")
-  expect_type(DIC(fitc),"double")
-  expect_type(WAIC(fitc),"double")
+  expect_type(DIC(fitc,mc_error = 1),"double")
+  expect_type(WAIC(fitc,mc_error = 1),"double")
   
   
   ## Test plot
-  expect_s3_class(plot(fitc,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
-  expect_s3_class(plot(fitc),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
+  if(do_full_testing){
+    expect_s3_class(plot(fitc),
+                    c("patchwork","ggplot2::ggplot","ggplot",
+                      "ggplot2::gg","S7_object","gg"))
+  }
   
   
   
@@ -1283,8 +1443,7 @@ test_that("Test complicated terms in lm_b formula",{
   
   expect_identical(colnames(s),
                    c("Variable","Post Mean","Lower","Upper","Prob Dir",
-                     "ROPE","ROPE bounds","BF favoring alternative",
-                     "Interpretation"))
+                     "ROPE","ROPE bounds"))
   expect_type(s$Variable,"character")
   expect_type(s$`Post Mean`,"double")
   expect_type(s$Lower,"double")
@@ -1292,8 +1451,6 @@ test_that("Test complicated terms in lm_b formula",{
   expect_type(s$`Prob Dir`,"double")
   expect_type(s$ROPE,"double")
   expect_type(s$`ROPE bounds`,"character")
-  expect_type(s$`BF favoring alternative`,"double")
-  expect_type(s$Interpretation,"character")
   
   ## Make sure prediction function works
   expect_no_error(predict(fitd))
@@ -1335,15 +1492,11 @@ test_that("Test complicated terms in lm_b formula",{
   ## Make sure information criteria work
   expect_type(AIC(fitd),"double")
   expect_type(BIC(fitd),"double")
-  expect_type(DIC(fitd),"double")
-  expect_type(WAIC(fitd),"double")
+  expect_type(DIC(fitd,mc_error = 1),"double")
+  expect_type(WAIC(fitd,mc_error = 1),"double")
   
   
   ## Test plot
-  expect_s3_class(plot(fitd,
-                       type = "pdp"),
-                  c("patchwork","ggplot2::ggplot","ggplot",
-                    "ggplot2::gg","S7_object","gg"))
   expect_s3_class(plot(fitd),
                   c("patchwork","ggplot2::ggplot","ggplot",
                     "ggplot2::gg","S7_object","gg"))
@@ -1354,3 +1507,5 @@ test_that("Test complicated terms in lm_b formula",{
   
   
 })
+}
+

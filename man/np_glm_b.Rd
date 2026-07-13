@@ -2,7 +2,7 @@
 % Please edit documentation in R/np_glm_b.R
 \name{np_glm_b}
 \alias{np_glm_b}
-\title{Non-parametric linear models}
+\title{Non-parametric Linear Models}
 \usage{
 np_glm_b(
   formula,
@@ -71,11 +71,7 @@ posterior draws will ensure that with 99\% probability the bounds of the
 credible intervals will be within \eqn{\pm} \code{mc_error}.}
 }
 \value{
-np_glm_b() returns an object of class "np_glm_b", which behaves as
-a list with the following elements:
-\itemize{
-\item summary - a tibble giving results for regression coefficients.
-}
+Object of class \code{np_glm_b} and \code{\link[=lm_b-class]{lm_b}}.
 }
 \description{
 np_glm_b uses general Bayesian inference with loss-likelihood bootstrap.

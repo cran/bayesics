@@ -1,4 +1,4 @@
-#' Non-parametric linear models
+#' Non-parametric Linear Models
 #' 
 #' np_glm_b uses general Bayesian inference with loss-likelihood bootstrap. 
 #' This is, as implemented here, a Bayesian non-parametric linear models 
@@ -65,11 +65,7 @@
 #' posterior draws will ensure that with 99% probability the bounds of the 
 #' credible intervals will be within \eqn{\pm} \code{mc_error}.
 #' 
-#' @returns np_glm_b() returns an object of class "np_glm_b", which behaves as
-#' a list with the following elements:
-#' \itemize{
-#'  \item summary - a tibble giving results for regression coefficients.
-#' }
+#' @returns Object of class \code{np_glm_b} and \code{\link[=lm_b-class]{lm_b}}.
 #' 
 #' 
 #' @examples
@@ -205,7 +201,8 @@ np_glm_b = function(formula,
     
     if( ((family$family == "poisson") & (family$link == "log")) | 
         ((family$family == "binomial") & (family$link == "logit")) | 
-        ((family$family == "negbinom") & (family$link == "log")) ){
+        ((family$family == "negbinom") & (family$link == "log")) |
+        (family$family == "gaussian")){
       
       if(family$family == "gaussian"){
         s_y = sd(y)
@@ -637,7 +634,7 @@ np_glm_b = function(formula,
     
     ## Posterior covariance matrix
     results$posterior_covariance = as.matrix(covmat / N)
-    
+    results$df = Inf
     
   }else{
     
@@ -677,6 +674,9 @@ np_glm_b = function(formula,
         }
       }
       
+      beta_draws = 
+        na.omit(beta_draws)
+      
     }else{
       
       helper = function(i){
@@ -710,6 +710,9 @@ np_glm_b = function(formula,
         t() |> 
         na.omit()
     }
+    
+    n_current_draws = nrow(beta_draws)
+    
     ## Evaluate number of draws required for accurate CI bounds
     fhats = 
       future.apply::future_lapply(1:NCOL(beta_draws),
@@ -784,11 +787,14 @@ np_glm_b = function(formula,
                     control = list(maxit = 1e4))
           }
           if(temp$conv == 0){
-            beta_draws[n_draws + i,] = temp$par
+            beta_draws[n_current_draws + i,] = temp$par
           }else{
-            beta_draws[n_draws + i,] = NA
+            beta_draws[n_current_draws + i,] = NA
           }
         }
+        
+        beta_draws = 
+          na.omit(beta_draws)
         
       }else{
         
@@ -904,6 +910,7 @@ np_glm_b = function(formula,
     results$data = data
   }
   results$family = family
+  results$ROPE = ROPE
   results$trials = trials
   results$CI_level = CI_level
   
@@ -919,7 +926,9 @@ np_glm_b = function(formula,
     }
   }
   
+  results$model_type = "nonparametric"
+  
   
   return(structure(results,
-                   class = "np_glm_b"))
+                   class = c("np_glm_b","lm_b")))
 }

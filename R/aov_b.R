@@ -1,4 +1,4 @@
-#' Analysis of Variance using Bayesian methods
+#' Analysis of Variance Using Bayesian Methods
 #' 
 #' @details
 #' 
@@ -65,38 +65,7 @@
 #'  than 1GB of memory, compute_bayes_factor will automatically be set to 
 #'  FALSE.  This setting can be overridden by setting \code{compute_bayes_factor="force"}.
 #' 
-#' @returns Object of class "aov_b" with the following elements:
-#' \itemize{
-#'  \item summary - tibble giving the summary of the model parameters
-#'  \item BF_for_different_vs_same_means - Bayes factor in favor of the full 
-#'  model (each group has their own mean) vs. the null model (all groups have 
-#'  the same mean).
-#'  \item pairwise summary - tibble giving the summary comparing all 
-#'  factor level means
-#'  \item contrasts (if provided) - list with named elements L (the contrasts provided 
-#'  by the user) and summary.
-#'  \item posterior_draws - mcmc object (see coda package) giving the posterior draws
-#'  \item posterior_parameters - 
-#'  \itemize{
-#'    \item mu_g - the post. means of the group means
-#'    \item nu_g - the post. scalars of the precision
-#'    \item a_g - (twice) the post. shape of the inv. gamma for the group variances
-#'    \item b_g - (twice) the post. rate of the inv. gamma for the group variances.
-#'  }
-#'  \item hyperparameters - 
-#'  \itemize{
-#'    \item mu - the prior mean of the group means
-#'    \item nu - the prior scalar of the precision
-#'    \item a - (twice) the prior shape of the inv. gamma for the group variances
-#'    \item b - (twice) the prior rate of the inv. gamma for the group variances.
-#'  }
-#'  \item \code{fitted} - Posterior mean of \eqn{\mu_g := \mathbb{E}(y_{gi})}
-#'  \item \code{residuals} - Posterior mean of the residuals
-#'  \item \code{standardized_residuals} - Estimated residuals divided by the 
-#'  group standard deviation
-#'  \item \code{mc_error} - absolute errors used to determine number of 
-#'  posterior draws for accurate interval estimation
-#' }
+#' @returns Object of class \code{aov_b} and \code{\link[=lm_b-class]{lm_b}}.
 #' 
 #' @references 
 #' Charles R. Doss, James M. Flegal, Galin L. Jones, Ronald C. Neath "Markov chain Monte Carlo estimation of quantiles," Electronic Journal of Statistics, Electron. J. Statist. 8(2), 2448-2478, (2014)
@@ -173,6 +142,77 @@ aov_b = function(formula,
                  seed = 1,
                  mc_error = 0.002,
                  compute_bayes_factor = TRUE){
+  
+  # Check arguments
+  # formula
+  if (!rlang::is_formula(formula))
+    stop("`formula` must be a formula", call. = FALSE)
+  
+  # data
+  if (!inherits(data, "data.frame"))
+    stop("`data` must be a data.frame or tibble", call. = FALSE)
+  
+  # heteroscedastic
+  if (!is.logical(heteroscedastic) || length(heteroscedastic) != 1)
+    stop("`heteroscedastic` must be TRUE or FALSE", call. = FALSE)
+  
+  # prior_mean_mu (optional)
+  if (!missing(prior_mean_mu)) {
+    if (!is.numeric(prior_mean_mu) || length(prior_mean_mu) != 1)
+      stop("`prior_mean_mu` must be a numeric scalar", call. = FALSE)
+  }
+  
+  # prior_mean_nu
+  if (!is.numeric(prior_mean_nu) || length(prior_mean_nu) != 1)
+    stop("`prior_mean_nu` must be a numeric scalar", call. = FALSE)
+  
+  # prior_var_shape
+  if (!is.numeric(prior_var_shape) || length(prior_var_shape) != 1)
+    stop("`prior_var_shape` must be a numeric scalar", call. = FALSE)
+  
+  # prior_var_rate
+  if (!is.numeric(prior_var_rate) || length(prior_var_rate) != 1)
+    stop("`prior_var_rate` must be a numeric scalar", call. = FALSE)
+  
+  # CI_level
+  if (!is.numeric(CI_level) || length(CI_level) != 1)
+    stop("`CI_level` must be a numeric scalar", call. = FALSE)
+  
+  if (CI_level <= 0 || CI_level >= 1)
+    stop("`CI_level` must be between 0 and 1", call. = FALSE)
+  
+  # ROPE (optional)
+  if (!missing(ROPE)) {
+    if (!is.numeric(ROPE) || length(ROPE) != 1)
+      stop("`ROPE` must be a numeric scalar", call. = FALSE)
+    
+    if (ROPE <= 0)
+      stop("`ROPE` must be positive", call. = FALSE)
+  }
+  
+  # contrasts
+  if (!missing(contrasts)){
+    if (!is.numeric(contrasts))
+      stop("`contrasts` must be a vector or a matrix", call. = FALSE)
+  }
+  
+  # improper
+  if (!is.logical(improper) || length(improper) != 1)
+    stop("`improper` must be TRUE or FALSE", call. = FALSE)
+  
+  # seed
+  if (!is.numeric(seed) || length(seed) != 1 || seed %% 1 != 0)
+    stop("`seed` must be a single integer value", call. = FALSE)
+  
+  # mc_error
+  if (!is.numeric(mc_error) || length(mc_error) != 1 || mc_error <= 0)
+    stop("`mc_error` must be a positive numeric scalar", call. = FALSE)
+  
+  # compute_bayes_factor
+  if (!is.logical(compute_bayes_factor) || length(compute_bayes_factor) != 1)
+    stop("`compute_bayes_factor` must be TRUE or FALSE", call. = FALSE)
+  
+  
   
   # Set alpha lv
   a = 1 - CI_level
@@ -253,17 +293,17 @@ aov_b = function(formula,
                              rep(levels(data$group),2),
                              sep = " : "),
                      `Post Mean` = c(mu_g, b_g/2 / (a_g/2 - 1.0)),
-                     Lower = c(extraDistr::qlst(a/2, 
+                     Lower = c(extraDistr::qlst(a/2.0, 
                                                 df = a_g,
                                                 mu = mu_g,
                                                 sigma = sqrt(b_g / nu_g / a_g)),
                                extraDistr::qinvgamma(a/2, alpha = a_g/2, beta = b_g/2)),
-                     Upper = c(extraDistr::qlst(1 - a/2, 
+                     Upper = c(extraDistr::qlst(1 - a/2.0, 
                                                 df = a_g,
                                                 mu = mu_g,
                                                 sigma = sqrt(b_g / nu_g / a_g)),
                                extraDistr::qinvgamma(1 - a/2, alpha = a_g/2, beta = b_g/2)),
-                     `Prob Dir` = c(extraDistr::plst(0, 
+                     `Prob Dir` = c(extraDistr::plst(0.0, 
                                                   df = a_g,
                                                   mu = mu_g,
                                                   sigma = sqrt(b_g / nu_g / a_g)),
@@ -488,6 +528,8 @@ aov_b = function(formula,
            nu_g = nu_g,
            a_g = a_g,
            b_g = b_g)
+    ret$CI_level = CI_level
+    
     if(improper){
       ret$hyperparameters = NA
     }else{
@@ -511,8 +553,13 @@ aov_b = function(formula,
     ret$standardized_residuals = 
       ret$residuals / temp$sd
     
+    # Return model info
+    ret$family = gaussian()
+    ret$xlevels = list(group = levels(data$group))
+    ret$model_type = "parametric"
+    
     return(structure(ret,
-                     class = "aov_b"))
+                     class = c("aov_b","lm_b")))
     
   }else{# start homoscedastic approach
     
@@ -778,6 +825,7 @@ aov_b = function(formula,
            a_g = a_G,
            b_g = b_G)
     ret$CI_level = CI_level
+      
     if(improper){
       ret$hyperparameters = NA
     }else{
@@ -800,8 +848,15 @@ aov_b = function(formula,
     ret$standardized_residuals = 
       ret$residuals / sqrt(b_G / (a_G - 1))
     
+    # Return model info
+    ret$family = gaussian()
+    ret$xlevels = list(group = levels(data$group))
+    ret$model_type = "parametric"
+    
+    
+    
     return(structure(ret,
-                     class = "aov_b"))
+                     class = c("aov_b","lm_b")))
     
   }
   
