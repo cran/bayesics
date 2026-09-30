@@ -3,15 +3,12 @@
 \name{IC}
 \alias{IC}
 \alias{DIC}
-\alias{AIC}
-\alias{BIC}
 \alias{WAIC}
 \alias{DIC.lm_b}
 \alias{DIC.aov_b}
 \alias{WAIC.lm_b}
 \alias{WAIC.aov_b}
-\title{Compute AIC, BIC, DIC, or WAIC for \code{aov_b} or \code{lm_b} Objects.
-(Lower is Better.)}
+\title{Compute DIC or WAIC}
 \usage{
 DIC(object, ...)
 
@@ -35,18 +32,22 @@ with 99\% probability the posterior mean of the deviance for DIC will be
 within \eqn{\pm}\code{mc_error}.  For WAIC, this is based on
 extrapolating the standard error from the preliminary
 posterior samples and may be inaccurate (at least 2000 samples
-will be used in final calculation).}
+will be used in final calculation).
+NOTE: Cross-platform reproducibility may not be
+guaranteed due to numerical differences in stats::density() between
+operating systems, leading to slightly different numbers of posterior
+samples obtained.}
 }
 \value{
 Numeric (or in the case of DIC, a numeric vector)
 }
 \description{
-Compute AIC, BIC, DIC, or WAIC for \code{aov_b} or \code{lm_b} Objects.
-(Lower is Better.)
+Compute either Deviance Information Criterion (DIC) or Watanabe–Akaike
+Information Criterion (WAIC) for \code{aov_b} or \code{lm_b} objects.
+(Lower is better.)
 }
 \details{
-AIC and BIC are constructed using the posterior mean. DIC
-and WAIC are computed via independent posterior sampling,
+DIC and WAIC are computed via independent posterior sampling,
 ensuring that the final computed numbers is within
 \code{mc_error} of the actual DIC/WAIC with high probability.
 }

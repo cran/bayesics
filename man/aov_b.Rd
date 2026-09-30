@@ -59,7 +59,10 @@ to the inverse of the variance?}
 \item{mc_error}{The number of posterior draws will ensure that with 99\%
 probability the bounds of the credible intervals will be within \eqn{\pm}
 \code{mc_error}\eqn{\times 4s_y}, that is, within 100\code{mc_error}\% of the
-trimmed range of y.}
+trimmed range of y. NOTE: Cross-platform reproducibility may not be
+guaranteed due to numerical differences in stats::density() between
+operating systems, leading to slightly different numbers of posterior
+samples obtained.}
 
 \item{compute_bayes_factor}{logical.  Computing the BF can be done
 analytically, but it requires an nxn matrix.  If this will require more
@@ -70,7 +73,8 @@ FALSE.  This setting can be overridden by setting \code{compute_bayes_factor="fo
 Object of class \code{aov_b} and \code{\link[=lm_b-class]{lm_b}}.
 }
 \description{
-Analysis of Variance Using Bayesian Methods
+Analysis of Variance using Bayesian methods, including both
+proper and improper priors.
 }
 \details{
 \strong{MODEL:}

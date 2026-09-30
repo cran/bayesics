@@ -3,6 +3,12 @@
 #' 
 #' @title Test of Independence for 2-way Contingency Tables
 #' 
+#' @description
+#' Test independence assumption for 2-way contingency tables, where the 
+#' data have been collected according to a multinomial, fixed row marginals, 
+#' or fixed column marginals design.
+#' 
+#' 
 #' @param x Either a table or a matrix of counts
 #' @param sampling_design Either "multinomial", "fixed rows", or "fixed columns"
 #' @param prior Either "jeffreys" (Dirichlet(1/2)) or "uniform" (Dirichlet(1)).  
@@ -17,7 +23,11 @@
 #' @param mc_error This is the error in probability from the posterior CDF 
 #' evaluated at the ROPE bounds. Note that if it is estimated that these
 #' probabilities are between 0.11 and 0.89, the more relaxed value of 0.01 is 
-#' used.
+#' used. 
+#' NOTE: Cross-platform reproducibility may not be 
+#' guaranteed due to numerical differences in stats::density() between 
+#' operating systems, leading to slightly different numbers of posterior 
+#' samples obtained.
 #' 
 #' @details
 #' For a 2-way contingency table with R rows and C columns, evaluate 
@@ -159,7 +169,7 @@ independence_b = function(x,
         prior_shapes = rep(prior_shapes,nR * nC)
     }
     results$prior = 
-      list(description = "Dirichlet with shape parameters = ",
+      list(description = "Prior on cell probabilities is: Dirichlet with shape parameters = ",
            prior = matrix(prior_shapes,
                           nR,nC,
                           dimnames = dimnames(x)))
@@ -437,7 +447,7 @@ independence_b = function(x,
         prior_shapes = matrix(prior_shapes,nR, nC)
     }
     results$prior = 
-      list(description = "Dirichlet prior with shape parameters = ",
+      list(description = "Prior on cell probabilities is: Dirichlet prior with shape parameters = ",
            prior = matrix(prior_shapes,
                           nR,nC,
                           dimnames = dimnames(x)))

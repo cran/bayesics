@@ -1,7 +1,20 @@
+# bayesics 3.1.0
+
+* Added `summary.b_procedure` and `summary.survfit_b`.
+* Enhanced `summary.mediate_b`.
+* Simplified `print` for `b_procedure`, `lm_b`, `aov_b`, `mediate_b`, and `survfit_b` classed objects.
+* Ensured the description provides additional information from the title in all R functions and defined classes.
+* Fixed missing documentation for formula in `cor_test_b.formula`.
+
+
+# bayesics 3.0.3
+
+* Added text to documentation regarding cross-platform reproducibility issues due to `stats::density`
+
+
 # bayesics 3.0.2
 
 * Caught bug in mediate_b.  Wasn't combining final posterior draws with preliminary posterior draws.
-
 
 
 # bayesics 3.0.1

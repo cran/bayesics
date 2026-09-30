@@ -2,6 +2,11 @@
 #' 
 #' @title Bayesian P-values for Regression Models
 #' 
+#' @description
+#' Model diagnostics via Bayesian p-values for \code{lm_b} and \code{aov_b} 
+#' objects
+#' 
+#' 
 #' @param object object of class \code{lm_b} or \code{aov_b}
 #' @param statistic Statistic used to compute Bayesian p-value. 
 #' If missing, the default statistic will either be the Shapiro-Wilk 
@@ -12,7 +17,11 @@
 #' for \code{negbinom}, where \eqn{Var(y) = \mu + \mu^2/\phi}).
 #' @param mc_error The number of posterior draws will ensure that with 
 #' 99% probability the estimated Bayesian p-value will be within 
-#' \eqn{\pm} \code{mc_error} of the actual Bayesian p-value.
+#' \eqn{\pm} \code{mc_error} of the actual Bayesian p-value. 
+#' NOTE: Cross-platform reproducibility may not be 
+#' guaranteed due to numerical differences in stats::density() between 
+#' operating systems, leading to slightly different numbers of posterior 
+#' samples obtained.
 #' @param seed integer.
 #' @param ... optional arguments.
 #' 

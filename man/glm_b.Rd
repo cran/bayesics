@@ -83,7 +83,11 @@ distribution if \code{algorithm = "IS"}.}
 
 \item{mc_error}{If importance sampling is used, the number of posterior
 draws will ensure that with 99\% probability the bounds of the credible
-intervals will be within \eqn{\pm} \code{mc_error}.}
+intervals will be within \eqn{\pm} \code{mc_error}.
+NOTE: Cross-platform reproducibility may not be
+guaranteed due to numerical differences in stats::density() between
+operating systems, leading to slightly different numbers of posterior
+samples obtained.}
 
 \item{save_memory}{logical.  If TRUE, a more memory efficient approach
 will be taken at the expense of computataional time (for important
@@ -140,9 +144,10 @@ covariates, this is simply \eqn{|\beta| < \log(1.125)}.}
 }
 }
 \description{
-glm_b is used to fit linear models.  It can be used to carry out
-regression for gaussian, binomial, and poisson data.  Note that if
-the family is gaussian, this is just a wrapper for \code{lm_b}.
+glm_b is used to fit generalized linear models.  It can be used to
+carry out regression for gaussian, binomial, poisson, and negative
+binomial data.  Note that if the family is gaussian, this is just
+a wrapper for \code{lm_b}.
 }
 \examples{
 \donttest{

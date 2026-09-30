@@ -1,7 +1,13 @@
-#' Test for Association/Correlation Between Paired Samples via Kendall's tau
 #' @name cor_test_b
 #' @rdname cor_test_b
 #' @export
+#' 
+#' @title Test for Association/Correlation Between Paired Samples
+#' 
+#' @description
+#'  Non-parametric test for association/correlation between paired samples via 
+#'  Kendall's tau, comparing the number of concordant and discordant pairs.
+#' 
 
 #' @export
 cor_test_b = function(x, ...){
@@ -313,8 +319,9 @@ cor_test_b.default = function(x,
 }
 
 
-#' @param formula ADD description!
-#' @param data ADD description!
+#' @param formula A formula of the form \eqn{~ u + v}, where each of \code{u} 
+#' and \code{v} are numeric variables giving the data values for one sample.  
+#' @param data A data.frame containing the variables in \code{formula}.
 #' @rdname cor_test_b
 #' @export
 cor_test_b.formula = function(formula,

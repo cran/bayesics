@@ -2,6 +2,13 @@
 #' 
 #' @title Diagnostic Plots for Bayesian Regression Objects
 #' 
+#' @description
+#' For regression objects based on a Gaussian distribution, qqplots and 
+#' residuals-vs-fitted plots are provided.  For all regression objects, 
+#' a scatterplot of Bayesian p-values is provided (one hopes it will be 
+#' cleanly bisected by the \eqn{y=x} line).
+#' 
+#' 
 #' @param x object of class \code{aov_b}, \code{lm_b}, \code{glm_b}, or
 #' \code{mediate_b}
 #' @param statistic, Statistic used to compute Bayesian p-value.
@@ -16,7 +23,11 @@
 #' and the outcome models respectively.
 #' @param mc_error The number of posterior draws will ensure that with 
 #' 99% probability the estimated Bayesian p-value will be within 
-#' \eqn{\pm} \code{mc_error} of the actual Bayesian p-value.
+#' \eqn{\pm} \code{mc_error} of the actual Bayesian p-value. 
+#' NOTE: Cross-platform reproducibility may not be 
+#' guaranteed due to numerical differences in stats::density() between 
+#' operating systems, leading to slightly different numbers of posterior 
+#' samples obtained.
 #' @param seed integer.
 #' @param return_as_list logical.  If TRUE, a list of ggplots will be returned, 
 #' rather than a single plot produced by the patchwork package.

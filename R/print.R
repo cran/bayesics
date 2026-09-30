@@ -2,6 +2,10 @@
 #' 
 #' @title Print \code{bayesics} Objects.
 #' 
+#' @description Print \code{bayesics} objects, including objects 
+#' of class \code{aov_b}, \code{lm_b}, \code{mediate_b}, 
+#' \code{survfit_b}, and \code{b_procedure}.
+#' 
 #' @param x an object used to select a method.
 #' @param ... optional arguments passed to `tibble::print.tbl_df`
 #' 
@@ -42,11 +46,8 @@ print.aov_b = function(x, ...){
     
     cat("\n\n----------\n\n")
   }
-  print(x$summary,...)
+  print(coef(x),...)
   cat("\n----------\n")
-  cat(paste0("(Note: Lower and upper bounds are for the ",
-             100 * x$CI_level,
-             "% credible interval.)\n"))
 }
 
 #' @rdname print
@@ -74,11 +75,8 @@ print.lm_b = function(x, ...){
   cat("\n----------\n\n")
   print(x$formula)
   cat("\n----------\n\n")
-  print(x$summary,...)
+  print(coef(x),...)
   cat("\n----------\n")
-  cat(paste0("(Note: Lower and upper bounds are for the ",
-             100 * x$CI_level,
-             "% credible interval.)\n"))
 }
 
 
@@ -93,11 +91,13 @@ print.mediate_b = function(x, ...){
   cat("\nOutcome model:\n")
   print(x$model_y$formula)
   cat("\n----------\n\n")
-  print(x$summary,...)
+  print_object = 
+    x$summary$Estimate
+  names(print_object) = 
+    x$summary$Estimand
+  
+  print(print_object,...)
   cat("\n----------\n")
-  cat(paste0("(Note: Lower and upper bounds are for the ",
-               100 * x$CI_level,
-               "% credible interval.)\n"))
 }
 
 
@@ -110,71 +110,27 @@ print.survfit_b = function(x, ...){
   cat("\n----------\n\nSemi-parametric survival curve fitting using Bayesian techniques\n")
   cat("\n----------\n\n")
   
+  cat("The time-to-event data follow a piecewise exponential model.  Each interval follows an exponential distribution, whose rate has a posterior of Gamma(<Shape>,<Rate>).\n")
+  
+  
   if(x$single_group_analysis){
   
-    tibble::tibble(Interval = 
-                     x$intervals |> 
-                     apply(1,function(x) paste0("(",
-                                                format(signif(x[1], 3)),
-                                                ",",
-                                                format(signif(x[2], 3)),
-                                                ")")),
-                   `Estimated rate` = 
-                     x$posterior_parameters[,1] / 
-                     x$posterior_parameters[,2],
-                   `2.5%` = 
-                     qgamma(0.025,
-                            x$posterior_parameters[,1],
-                            x$posterior_parameters[,2]),
-                   `97.5%` =
-                     qgamma(0.975,
-                            x$posterior_parameters[,1],
-                            x$posterior_parameters[,2]),
-                   Shape = 
-                     format(signif(x$posterior_parameters[,1], 3)),
-                   Rate = 
-                     format(signif(x$posterior_parameters[,2], 3))
-    ) |> 
-      print(...)
+    cat(paste0("\nNumber of intervals: ",
+               nrow(x$intervals),
+               "\n\nSurvival curve fitted up to: ",
+               max(x$intervals),
+               "\n"))
     
   }else{
     
-    for(g in x$group_names){
-      cat(g)
-      cat("\n\n")
-      
-      tibble::tibble(Interval = 
-                       x[[g]]$intervals |> 
-                       apply(1,function(x) paste0("(",
-                                                  format(signif(x[1], 3)),
-                                                  ",",
-                                                  format(signif(x[2], 3)),
-                                                  ")")),
-                     `Estimated rate` = 
-                       x[[g]]$posterior_parameters[,1] / 
-                       x[[g]]$posterior_parameters[,2],
-                     `2.5%` = 
-                       qgamma(0.025,
-                              x[[g]]$posterior_parameters[,1],
-                              x[[g]]$posterior_parameters[,2]),
-                     `97.5%` =
-                       qgamma(0.975,
-                              x[[g]]$posterior_parameters[,1],
-                              x[[g]]$posterior_parameters[,2]),
-                     Shape = 
-                       format(signif(x[[g]]$posterior_parameters[,1], 3)),
-                     Rate = 
-                       format(signif(x[[g]]$posterior_parameters[,2], 3))
-      ) |> 
-        print(...)
-      
-      cat("\n----------\n\n")
-      
-    }
+    cat(paste0("\nNumber of intervals: ",
+               nrow(x[[1]]$intervals),
+               "\n\nSurvival curve fitted up to: ",
+               max(x[[1]]$intervals),
+               "\n"))
     
   }
   
-  cat("Note: The time-to-event data follows a piecewise exponential model.  Each interval follows an exponential distribution, whose rate has a posterior of Gamma(<Shape>,<Rate>).\n")
 }
 
 
@@ -184,30 +140,7 @@ print.survfit_b = function(x, ...){
 print.b_procedure = function(x, ...){
   cat(paste0("\n----------\n\n",
              x$name,
-             " using Bayesian techniques\n\n----------\n\n"))
-  
-  # Data
-  if(x$print_data){
-    cat("Data: \n")
-    print(x$data)
-    cat("\n")
-  }
-  
-  
-  # Prior
-  if(is.list(x$prior)){
-    cat("\n\n")
-    cat(x$prior$description)
-    cat("\n")
-    format(signif(x$prior$prior, 3), 
-             scientific = FALSE) |> 
-      noquote() |> 
-      print()
-  }else{
-    
-    cat(x$prior)
-  }
-  
+             " using Bayesian techniques\n\n----------"))
   
   # Results
   ## Estimate, CI, ROPE, pdir

@@ -25,7 +25,11 @@ for \code{negbinom}, where \eqn{Var(y) = \mu + \mu^2/\phi}).}
 
 \item{mc_error}{The number of posterior draws will ensure that with
 99\% probability the estimated Bayesian p-value will be within
-\eqn{\pm} \code{mc_error} of the actual Bayesian p-value.}
+\eqn{\pm} \code{mc_error} of the actual Bayesian p-value.
+NOTE: Cross-platform reproducibility may not be
+guaranteed due to numerical differences in stats::density() between
+operating systems, leading to slightly different numbers of posterior
+samples obtained.}
 
 \item{seed}{integer.}
 
@@ -41,7 +45,8 @@ See details.
 }
 }
 \description{
-Bayesian P-values for Regression Models
+Model diagnostics via Bayesian p-values for \code{lm_b} and \code{aov_b}
+objects
 }
 \details{
 \strong{Overview:}

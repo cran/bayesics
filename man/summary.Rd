@@ -5,7 +5,9 @@
 \alias{summary.lm_b}
 \alias{summary.aov_b}
 \alias{summary.mediate_b}
-\title{Summary Functions for bayesics Objects}
+\alias{summary.b_procedure}
+\alias{summary.survfit_b}
+\title{Summarizing \code{bayesics} Fits}
 \usage{
 \method{summary}{lm_b}(
   object,
@@ -18,11 +20,16 @@
 \method{summary}{aov_b}(object, CI_level = 0.95, print_results = TRUE, ...)
 
 \method{summary}{mediate_b}(object, CI_level = 0.95, print_results = TRUE, ...)
+
+\method{summary}{b_procedure}(object, ...)
+
+\method{summary}{survfit_b}(object, ...)
 }
 \arguments{
-\item{object}{bayesics object}
+\item{object}{\code{bayesics} object}
 
-\item{CI_level}{Posterior probability covered by credible interval}
+\item{CI_level}{Posterior probability covered by credible interval.
+Unused for \code{b_procedure} objects.}
 
 \item{interpretable_scale}{If a GLM is fit using
 \code{binomial(link="logit")}, \code{poisson(link="log")}, or
@@ -31,13 +38,16 @@ then the results will be exponentiated.}
 
 \item{print_results}{logical}
 
-\item{...}{optional arguments.}
+\item{...}{optional arguments.  for \code{print.survfit_b},
+this goes into \code{tibble::print.tbl_df}.}
 }
 \value{
 tibble with summary values
 }
 \description{
-Summary Functions for bayesics Objects
+\code{summary} method for objects of class \code{lm_b},
+\code{aov_b}, \code{mediate_b}, \code{b_procedure}, and
+\code{survfit_b}.
 }
 \examples{
 \donttest{

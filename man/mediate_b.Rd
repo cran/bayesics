@@ -46,7 +46,11 @@ TRUE, as this can be a computationally intensive procedure.}
 
 \item{mc_error}{positive scalar.  The number of posterior samples will,
 with high probability, estimate the CI bounds up to
-\eqn{\pm}\code{mc_error}\eqn{\times}\code{sd(y)}.}
+\eqn{\pm}\code{mc_error}\eqn{\times}\code{sd(y)}.
+NOTE: Cross-platform reproducibility may not be
+guaranteed due to numerical differences in stats::density() between
+operating systems, leading to slightly different numbers of posterior
+samples obtained.}
 
 \item{batch_size}{positive integer.  Number of posterior draws to be
 taken at once.  Higher values are more computationally intensive, but
@@ -64,7 +68,8 @@ to match the scale of the outcome
 }
 }
 \description{
-Mediation analysis done in the framework of Imai et al. (2010).
+Mediation analysis done using the potential outcomes framework
+outlined in Imai et al. (2010).
 }
 \details{
 The model is the same as that of Imai et al. (2010):

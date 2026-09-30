@@ -1,11 +1,13 @@
 #' @name IC
-#' @aliases AIC
-#' @aliases BIC
 #' @aliases DIC
 #' @aliases WAIC
 #' 
-#' @title Compute AIC, BIC, DIC, or WAIC for \code{aov_b} or \code{lm_b} Objects.  
-#' (Lower is Better.)  
+#' @title Compute DIC or WAIC
+#' 
+#' @description
+#' Compute either Deviance Information Criterion (DIC) or Watanabe–Akaike 
+#' Information Criterion (WAIC) for \code{aov_b} or \code{lm_b} objects.  
+#' (Lower is better.)  
 #' 
 #' @param object \code{aov_b}, \code{lm_b}, or \code{glm_b} object
 #' @param seed integer.  Always set your seed!!!
@@ -14,14 +16,17 @@
 #' within \eqn{\pm}\code{mc_error}.  For WAIC, this is based on 
 #' extrapolating the standard error from the preliminary 
 #' posterior samples and may be inaccurate (at least 2000 samples 
-#' will be used in final calculation).
+#' will be used in final calculation). 
+#' NOTE: Cross-platform reproducibility may not be 
+#' guaranteed due to numerical differences in stats::density() between 
+#' operating systems, leading to slightly different numbers of posterior 
+#' samples obtained.
 #' @param ... Passed to methods.
 #' 
 #' @returns Numeric (or in the case of DIC, a numeric vector)
 #' 
 #' @details
-#' AIC and BIC are constructed using the posterior mean. DIC 
-#' and WAIC are computed via independent posterior sampling, 
+#' DIC and WAIC are computed via independent posterior sampling, 
 #' ensuring that the final computed numbers is within 
 #' \code{mc_error} of the actual DIC/WAIC with high probability.
 #' 
