@@ -36,7 +36,7 @@
 
 #' @rdname coef
 #' @export
-coef.lm_b = function(object, ...){4
+coef.lm_b = function(object, ...){
   
   if(!inherits(object, "lm_b"))
     stop("`object` must be an object of class \"lm_b\"", call. = FALSE)
